@@ -1,16 +1,15 @@
-# PHP 8.2 with Apache
+# Use PHP with Apache
 FROM php:8.2-apache
 
-# Install MySQL extensions
-RUN docker-php-ext-install pdo pdo_mysql mysqli
+# Enable mysqli and pdo_mysql extensions
+RUN docker-php-ext-install mysqli pdo pdo_mysql
 
-# Enable Apache mod_rewrite (useful for frameworks/pretty URLs)
+# Copy your backend files from the right folder to Apache's web root
+COPY demo2/demoproject/ /var/www/html/
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
+
+# Optional: enable Apache rewrite if you have pretty URLs
 RUN a2enmod rewrite
-
-# Copy app (if your code lives in /demo2, change COPY line accordingly)
-WORKDIR /var/www/html
-COPY demo2/ /var/www/html
-# For code in /demo2 instead:
-# COPY demo2/ /var/www/html
-
-EXPOSE 80
