@@ -13,7 +13,7 @@ header("Content-Type: application/json");  // Set JSON content type
     //header("Access-Control-Allow-Origin: *");
     //header("Access-Control-Allow-Methods: GET, POST, DELETE, PUT, OPTIONS");
     //header("Access-Control-Allow-Headers: Content-Type, Authorization");
-    exit(0); // Exit after handling the OPTIONS request
+    //exit(0); // Exit after handling the OPTIONS request
 //}
 
 
