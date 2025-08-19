@@ -1,7 +1,5 @@
-<IfModule mod_rewrite.c>
-    RewriteEngine On
+# Enable PHP execution
+AddHandler application/x-httpd-php .php
 
-    # Redirect all request to the public directory
-    RewriteRule ^$ public/ [L]
-    RewriteRule (.*) piblic/$1 [L]
-</IfModule>
+# Set default index
+DirectoryIndex index.php routes.php
