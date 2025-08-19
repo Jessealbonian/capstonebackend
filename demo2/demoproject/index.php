@@ -9,7 +9,7 @@ $allowed_origins = [
 ];
 
 // Database credentials from Railway (adjust accordingly)
-$db_host = "mysql.railway.internal"; 
+$db_host = "crossover.proxy.rlwy.net"; 
 $db_user = "root";
 $db_pass = "gLjXtuyGRfwgmafkdLUeIvdOqVBspSnI";
 $db_name = "railway";
