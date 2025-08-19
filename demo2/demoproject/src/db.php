@@ -1,10 +1,10 @@
 <?php
 function get_db(): PDO {
-  $host = getenv('MYSQLHOST') ?: 'mysql.railway.internal';
+  $host = getenv('MYSQLHOST') ?: 'crossover.proxy.rlwy.net';
   $port = getenv('MYSQLPORT') ?: '3306';
   $db   = getenv('MYSQLDATABASE') ?: 'railway';
   $user = getenv('MYSQLUSER') ?: 'root';
-  $pass = getenv('MYSQLPASSWORD') ?: '';
+  $pass = getenv('MYSQLPASSWORD') ?: 'gLjXtuyGRfwgmafkdLUeIvdOqVBspSnI';
   $dsn = "mysql:host={$host};port={$port};dbname={$db};charset=utf8mb4";
   $pdo = new PDO($dsn, $user, $pass, [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
