@@ -9,7 +9,7 @@ set_time_limit(1000);
 
 // Use environment variables for database configuration
 $host = getenv('MYSQLHOST') ?: 'crossover.proxy.rlwy.net';
-$port = getenv('MYSQLPORT') ?: '3306';
+$port = getenv('MYSQLPORT') ?: '46833';  // Use the public port from Railway
 $db   = getenv('MYSQLDATABASE') ?: 'railway';
 $user = getenv('MYSQLUSER') ?: 'root';
 $pass = getenv('MYSQLPASSWORD') ?: 'gLjXtuyGRfwgmafkdLUeIvdOqVBspSnI';
@@ -37,7 +37,7 @@ class Connection{
 
     public function __construct() {
         $this->host = SERVER;
-        $this->port = getenv('MYSQLPORT') ?: '3306';
+        $this->port = getenv('MYSQLPORT') ?: '46833';  // Use the public port from Railway
         $this->db = DATABASE;
         $this->user = USER;
         $this->pass = PASSWORD;
