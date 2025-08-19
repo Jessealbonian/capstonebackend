@@ -40,6 +40,11 @@ if (isset($_REQUEST['request'])) {
     http_response_code(404);
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 // Handle requests based on HTTP method
 switch ($_SERVER['REQUEST_METHOD']) {
         // Handle GET requests
@@ -413,7 +418,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
 
             case 'login_users':
-                echo $post->login_users($data);
+                //echo $post->login_users($data);
                 break;
 
             case 'Hoa_adminsignup':
