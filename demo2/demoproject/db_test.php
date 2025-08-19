@@ -1,5 +1,5 @@
 <?php
-$host = getenv('MYSQLHOST') ?: 'crossover.proxy.rlwy.net';
+$host = getenv('MYSQLHOST') ?: 'mysql.railway.internal';
 $port = getenv('MYSQLPORT') ?: 3306;
 $db   = getenv('MYSQLDATABASE') ?: 'railway';
 $user = getenv('MYSQLUSER') ?: 'root';
