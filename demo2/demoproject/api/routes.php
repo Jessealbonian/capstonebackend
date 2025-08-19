@@ -10,7 +10,7 @@ header("Content-Type: application/json");  // Set JSON content type
 // Handle OPTIONS request for preflight check (this is necessary for some browsers to allow cross-origin requests)
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     // Respond with the necessary CORS headers for preflight checks
-    header("Access-Control-Allow-Origin: *");
+    //header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Methods: GET, POST, DELETE, PUT, OPTIONS");
     header("Access-Control-Allow-Headers: Content-Type, Authorization");
     exit(0); // Exit after handling the OPTIONS request
