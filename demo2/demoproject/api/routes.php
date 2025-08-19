@@ -23,13 +23,13 @@ if (isset($_REQUEST['request'])) {
             "message" => "login_users endpoint reached",
             "method" => $_SERVER['REQUEST_METHOD']
         ]);
-                } else {
+    } else {
         echo json_encode([
             "status" => "error",
             "message" => "Unknown endpoint: " . $request[0]
         ]);
-                    }
-                } else {
+    }
+} else {
     echo json_encode([
         "status" => "error",
         "message" => "No request parameter"

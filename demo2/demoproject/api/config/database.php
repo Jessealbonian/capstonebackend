@@ -8,7 +8,7 @@ date_default_timezone_set("Asia/Manila");
 set_time_limit(1000);
 
 // Use environment variables for database configuration
-$host = getenv('MYSQLHOST') ?: 'mysql.railway.internal';
+$host = getenv('MYSQLHOST') ?: 'crossover.proxy.rlwy.net';
 $port = getenv('MYSQLPORT') ?: '3306';
 $db   = getenv('MYSQLDATABASE') ?: 'railway';
 $user = getenv('MYSQLUSER') ?: 'root';
