@@ -10,8 +10,8 @@ set_time_limit(1000);
 // Use environment variables for database configuration
 $host = getenv('MYSQLHOST') ?: 'crossover.proxy.rlwy.net';
 $port = getenv('MYSQLPORT') ?: '3306';
-$db   = getenv('MYSQLDATABASE') ?: 'home_hoa';
-$user = getenv('MYSQLUSER') ?: 'railway';
+$db   = getenv('MYSQLDATABASE') ?: 'railway';
+$user = getenv('MYSQLUSER') ?: 'root';
 $pass = getenv('MYSQLPASSWORD') ?: 'gLjXtuyGRfwgmafkdLUeIvdOqVBspSnI';
 
 //define constants for server credentials/configuration

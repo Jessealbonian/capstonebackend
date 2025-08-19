@@ -23,9 +23,26 @@ require_once "./modules/get.php";
 require_once "./modules/post.php";
 require_once "./config/database.php";
 
-
-$con = new Connection();
-$pdo = $con->connect();
+// Add error handling for database connection
+try {
+    $con = new Connection();
+    $pdo = $con->connect();
+    error_log("Database connection successful");
+    
+    // Test if the hoa_users table exists
+    $stmt = $pdo->query("SHOW TABLES LIKE 'hoa_users'");
+    if ($stmt->rowCount() > 0) {
+        error_log("hoa_users table exists");
+    } else {
+        error_log("hoa_users table does not exist");
+    }
+    
+} catch (Exception $e) {
+    error_log("Database connection failed: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(["error" => "Database connection failed: " . $e->getMessage()]);
+    exit;
+}
 
 // Initialize Get and Post objects
 $get = new Get($pdo);
