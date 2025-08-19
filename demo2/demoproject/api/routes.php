@@ -1,4 +1,5 @@
 <?php
+include_once __DIR__ . "/cors.php";
 
 // Set CORS headers for all responses
 header("Access-Control-Allow-Origin: *");  // Allow all origins (or specify your domain)
@@ -412,7 +413,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
 
             case 'login_users':
-                //echo $post->login_users($data);
+                echo $post->login_users($data);
                 break;
 
             case 'Hoa_adminsignup':
