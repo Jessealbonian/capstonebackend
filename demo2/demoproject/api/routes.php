@@ -7,6 +7,7 @@ ini_set('log_errors', 1);
 // Start output buffering to catch any early errors
 ob_start();
 
+// Set CORS headers immediately - before any other processing
 $allowed_origins = [
     "https://athletrack.vercel.app",
     "https://athletrack-git-main-kohitrees-projects.vercel.app",
@@ -16,34 +17,42 @@ $allowed_origins = [
 ];
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? "";
+error_log("=== REQUEST START ===");
+error_log("CORS Headers - Origin: " . $origin);
+error_log("CORS Headers - Method: " . $_SERVER['REQUEST_METHOD']);
+
+// Set CORS headers
 if (in_array($origin, $allowed_origins)) {
     header("Access-Control-Allow-Origin: $origin");
+    error_log("CORS Debug - Set Access-Control-Allow-Origin: $origin");
+} else {
+    error_log("CORS Debug - Origin not in allowed list: $origin");
 }
+
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Credentials: true");
 
-// Handle OPTIONS preflight request
+// Handle OPTIONS preflight request immediately
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    error_log("CORS Debug - Handling OPTIONS preflight request");
     http_response_code(200);
     exit;
 }
 
 // Set JSON content type
 header("Content-Type: application/json");
-error_log("=== REQUEST START ===");
-error_log("CORS Headers - Origin: " . $origin);
-error_log("CORS Headers - Method: " . $_SERVER['REQUEST_METHOD']);
 
-
-// Handle OPTIONS request for preflight check (this is necessary for some browsers to allow cross-origin requests)
-//if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
-    // Respond with the necessary CORS headers for preflight checks
-    //header("Access-Control-Allow-Origin: *");
-    //header("Access-Control-Allow-Methods: GET, POST, DELETE, PUT, OPTIONS");
-    //header("Access-Control-Allow-Headers: Content-Type, Authorization");
-    // exit(0); // Exit after handling the OPTIONS request
-//}
+// Simple test response for debugging
+if (isset($_REQUEST['request']) && $_REQUEST['request'] === 'test') {
+    echo json_encode([
+        "status" => "success",
+        "message" => "CORS test working",
+        "origin" => $origin,
+        "method" => $_SERVER['REQUEST_METHOD']
+    ]);
+    exit;
+}
 
 
 // Include required modules with error handling
