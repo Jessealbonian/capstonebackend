@@ -412,7 +412,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
 
             case 'login_users':
-                echo $post->login_users($data);
+                //echo $post->login_users($data);
                 break;
 
             case 'Hoa_adminsignup':
@@ -439,62 +439,6 @@ switch ($_SERVER['REQUEST_METHOD']) {
             case 'admin_login':
                 echo $post->adminLogin($data);
                 break;
-
-            case 'add_property': // new route for adding properties
-                echo json_encode($post->add_property($data));
-                break;
-
-            case 'update_property':
-                if (count($request) > 1) {
-                    echo $post->update_property($data, $request[1]);
-                } else {
-                    http_response_code(400);
-                    echo json_encode([
-                        "status" => "error",
-                        "message" => "Property ID is required"
-                    ]);
-                }
-                break;
-
-            case 'deleteProperty':
-                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                    $data = json_decode(file_get_contents("php://input"), true);
-
-                    // Log the received data for debugging
-                    error_log('Received Data: ' . print_r($data, true));
-
-                    if (!empty($data['prop_id'])) {
-                        echo json_encode($post->delete_property($data['prop_id']));
-                    } else {
-                        echo json_encode(['status' => 'error', 'message' => 'ID is missing']);
-                    }
-                } else {
-                    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
-                }
-                break;
-
-
-            case 'submitInquiry':
-                echo json_encode($post->submitInquiry($data));
-                break;
-
-            case 'deleteInquiry':
-                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                    $data = json_decode(file_get_contents("php://input"), true);
-
-                    // Log the received data for debugging
-                    error_log('Received Data: ' . print_r($data, true));
-
-                    if (!empty($data['id'])) {
-                        echo json_encode($post->delete_inquiry($data['id']));
-                    } else {
-                        echo json_encode(['status' => 'error', 'message' => 'ID is missing']);
-                    }
-                } else {
-                    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
-                }
-                break;
-
 
             case 'submitTrippingRequest':
                 echo json_encode($post->submitTrippingRequest($data));
@@ -576,28 +520,6 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($post->submitCustomerCare($data));
                 break;
 
-
-
-            case 'send_appl':
-                echo json_encode($post->send_application($data));
-                break;
-
-            case 'deleteApplication':
-                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                    $data = json_decode(file_get_contents("php://input"), true);
-
-                    // Log the received data for debugging
-                    error_log('Received Data: ' . print_r($data, true));
-
-                    if (!empty($data['appl_id'])) {
-                        echo json_encode($post->delete_application($data['appl_id']));
-                    } else {
-                        echo json_encode(['status' => 'error', 'message' => 'ID is missing']);
-                    }
-                } else {
-                    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
-                }
-                break;
                 // case 'send_appl': // Route for handling application submissions
 
                 //     // Collect POST data and pass to the send_application method
@@ -644,89 +566,6 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
 
                 //TILL THIS POINT
-
-                // In the POST case switch statement:
-            case 'addNews':
-                echo json_encode($post->add_news($data));
-                break;
-
-                //NEED TO CALL THE FUNCTION 
-
-            case 'updateNews':
-                if (count($request) > 1) {
-                    $id = $request[1]; // Extract the news ID
-                    $data = json_decode(file_get_contents("php://input")); // Handle JSON payload
-
-                    // Pass both `$_POST` and `$_FILES` to the method
-                    echo json_encode($post->update_news((object) $_POST, $id));
-                }
-                break;
-
-
-
-            case 'deleteNews':
-                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                    $data = json_decode(file_get_contents("php://input"), true);
-
-                    // Log the received data for debugging
-                    error_log('Received Data: ' . print_r($data, true));
-
-                    if (!empty($data['id'])) {
-                        echo json_encode($post->delete_news($data['id']));
-                    } else {
-                        echo json_encode(['status' => 'error', 'message' => 'ID is missing']);
-                    }
-                } else {
-                    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
-                }
-                break;
-
-            case 'addBlogs':
-                echo json_encode($post->add_blogs($data));
-                break;
-
-            case 'deleteBlogs':
-                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                    $data = json_decode(file_get_contents("php://input"), true);
-
-                    // Log the received data for debugging
-                    error_log('Received Data: ' . print_r($data, true));
-
-                    if (!empty($data['id'])) {
-                        echo json_encode($post->delete_blogs($data['id']));
-                    } else {
-                        echo json_encode(['status' => 'error', 'message' => 'ID is missing']);
-                    }
-                } else {
-                    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
-                }
-                break;
-
-            case 'addVlogs':
-                $data = json_decode(file_get_contents('php://input'), true);
-                if (!isset($data['title']) || !isset($data['videoUrl']) || !isset($data['description'])) {
-                    echo json_encode(['status' => 'error', 'message' => 'Missing required fields']);
-                    break;
-                }
-                echo json_encode($post->add_vlog($data));
-                break;
-
-            case 'deleteVlogs':
-                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-                    $data = json_decode(file_get_contents("php://input"), true);
-
-                    // Log the received data for debugging
-                    error_log('Received Data: ' . print_r($data, true));
-
-                    if (!empty($data['id'])) {
-                        echo json_encode($post->delete_vlogs($data['id']));
-                    } else {
-                        echo json_encode(['status' => 'error', 'message' => 'ID is missing']);
-                    }
-                } else {
-                    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
-                }
-                break;
 
             case 'deleteEvents':
                 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

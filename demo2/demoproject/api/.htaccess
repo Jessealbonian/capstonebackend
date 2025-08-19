@@ -1,9 +1,7 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^(.*)$ routes.php?request=$1 [L,QSA]
+
+    # Redirect all request to the public directory
+    RewriteRule ^$ public/ [L]
+    RewriteRule (.*) piblic/$1 [L]
 </IfModule>
-<FilesMatch "\.(jpg|jpeg|png|gif|webp|svg|bmp)$">
-    Header set Access-Control-Allow-Origin "*"
-</FilesMatch>
