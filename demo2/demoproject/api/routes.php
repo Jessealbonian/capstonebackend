@@ -1,7 +1,7 @@
 <?php
 
 // Set CORS headers for all responses
-header("Access-Control-Allow-Origin: https://athletrack.vercel.app,https://athletrack-git-main-kohitrees-projects.vercel.app,https://athletrack-kicwhvrgv-kohitrees-projects.vercel.app,http://localhost:4200");  // Allow all origins (or specify your domain)
+header("Access-Control-Allow-Origin: *");  // Allow all origins (or specify your domain)
 header("Access-Control-Allow-Methods: GET, POST, DELETE, PUT, OPTIONS");  // Allowed methods
 header("Access-Control-Allow-Headers: Content-Type, Authorization");  // Allowed headers
 header("Content-Type: application/json");  // Set JSON content type
@@ -9,7 +9,7 @@ header("Content-Type: application/json");  // Set JSON content type
 // Handle OPTIONS request for preflight check (this is necessary for some browsers to allow cross-origin requests)
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     // Respond with the necessary CORS headers for preflight checks
-    header("Access-Control-Allow-Origin: https://athletrack.vercel.app,https://athletrack-git-main-kohitrees-projects.vercel.app,https://athletrack-kicwhvrgv-kohitrees-projects.vercel.app,http://localhost:4200");
+    header("Access-Control-Allow-Origin: *");
     header("Access-Control-Allow-Methods: GET, POST, DELETE, PUT, OPTIONS");
     header("Access-Control-Allow-Headers: Content-Type, Authorization");
     exit(0); // Exit after handling the OPTIONS request
