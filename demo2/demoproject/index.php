@@ -1,9 +1,10 @@
 <?php
-$host = getenv('MYSQLHOST') ?: 'crossover.proxy.rlwy.net';
-$port = getenv('MYSQLPORT') ?: 3306;
-$db   = getenv('MYSQLDATABASE') ?: 'railway';
-$user = getenv('MYSQLUSER') ?: 'root';
-$pass = getenv('MYSQLPASSWORD');
+// $host = getenv('MYSQLHOST') ?: 'crossover.proxy.rlwy.net';
+// $port = getenv('MYSQLPORT') ?: 3306;
+// $db   = getenv('MYSQLDATABASE') ?: 'railway';
+// $user = getenv('MYSQLUSER') ?: 'root';
+// $pass = getenv('MYSQLPASSWORD');
+echo "db api test connection";
 
 try {
     $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
