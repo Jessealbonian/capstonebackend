@@ -1,11 +1,12 @@
 <?php
 include_once __DIR__ . "/cors.php";
 
-// Set CORS headers for all responses
-// header("Access-Control-Allow-Origin: *");  // Allow all origins (or specify your domain)
-// header("Access-Control-Allow-Methods: GET, POST, DELETE, PUT, OPTIONS");  // Allowed methods
-// header("Access-Control-Allow-Headers: Content-Type, Authorization");  // Allowed headers
-header("Content-Type: application/json");  // Set JSON content type
+// Add debugging to see if CORS headers are being set
+error_log("CORS Headers - Origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'none'));
+error_log("CORS Headers - Method: " . $_SERVER['REQUEST_METHOD']);
+
+// Set JSON content type
+header("Content-Type: application/json");
 
 // Handle OPTIONS request for preflight check (this is necessary for some browsers to allow cross-origin requests)
 //if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -13,7 +14,7 @@ header("Content-Type: application/json");  // Set JSON content type
     //header("Access-Control-Allow-Origin: *");
     //header("Access-Control-Allow-Methods: GET, POST, DELETE, PUT, OPTIONS");
     //header("Access-Control-Allow-Headers: Content-Type, Authorization");
-    //exit(0); // Exit after handling the OPTIONS request
+    // exit(0); // Exit after handling the OPTIONS request
 //}
 
 
