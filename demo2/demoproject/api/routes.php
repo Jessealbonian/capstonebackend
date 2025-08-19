@@ -5,7 +5,7 @@ include_once __DIR__ . "/cors.php";
 // header("Access-Control-Allow-Origin: *");  // Allow all origins (or specify your domain)
 // header("Access-Control-Allow-Methods: GET, POST, DELETE, PUT, OPTIONS");  // Allowed methods
 // header("Access-Control-Allow-Headers: Content-Type, Authorization");  // Allowed headers
-// header("Content-Type: application/json");  // Set JSON content type
+header("Content-Type: application/json");  // Set JSON content type
 
 // Handle OPTIONS request for preflight check (this is necessary for some browsers to allow cross-origin requests)
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -38,11 +38,6 @@ if (isset($_REQUEST['request'])) {
     // If 'request' parameter is not set, return a 404 response
     echo "Not Found";
     http_response_code(404);
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
 }
 
 // Handle requests based on HTTP method
