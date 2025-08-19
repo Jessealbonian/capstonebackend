@@ -418,6 +418,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
 
             case 'login_users':
+                include_once __DIR__ . "/cors.php";
                 //echo $post->login_users($data);
                 break;
 
@@ -435,6 +436,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
 
             case 'login':
+                include_once __DIR__ . "/cors.php";
                 echo $post->login($data);
                 break;
 
