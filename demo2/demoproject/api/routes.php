@@ -97,10 +97,29 @@ if (isset($_REQUEST['request'])) {
     $request = explode('/', $_REQUEST['request']);
     error_log("Request parameter: " . $_REQUEST['request']);
 } else {
-    error_log("No request parameter found");
-    http_response_code(404);
-    echo json_encode(["error" => "No request parameter"]);
-    exit;
+    // Check if this is a direct endpoint call (like /api/login_users)
+    $request_uri = $_SERVER['REQUEST_URI'];
+    $path = parse_url($request_uri, PHP_URL_PATH);
+    $path_parts = explode('/', trim($path, '/'));
+    
+    // If the last part of the path is an endpoint name, use it
+    if (count($path_parts) > 0) {
+        $last_part = end($path_parts);
+        if ($last_part === 'login_users') {
+            $request = ['login_users'];
+            error_log("Direct endpoint call detected: login_users");
+        } else {
+            error_log("No request parameter found and not a direct endpoint");
+            http_response_code(404);
+            echo json_encode(["error" => "No request parameter"]);
+            exit;
+        }
+    } else {
+        error_log("No request parameter found");
+        http_response_code(404);
+        echo json_encode(["error" => "No request parameter"]);
+        exit;
+    }
 }
 
 // Handle requests based on HTTP method
