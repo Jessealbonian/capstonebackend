@@ -2,10 +2,10 @@
 include_once __DIR__ . "/cors.php";
 
 // Set CORS headers for all responses
-header("Access-Control-Allow-Origin: *");  // Allow all origins (or specify your domain)
-header("Access-Control-Allow-Methods: GET, POST, DELETE, PUT, OPTIONS");  // Allowed methods
-header("Access-Control-Allow-Headers: Content-Type, Authorization");  // Allowed headers
-header("Content-Type: application/json");  // Set JSON content type
+// header("Access-Control-Allow-Origin: *");  // Allow all origins (or specify your domain)
+// header("Access-Control-Allow-Methods: GET, POST, DELETE, PUT, OPTIONS");  // Allowed methods
+// header("Access-Control-Allow-Headers: Content-Type, Authorization");  // Allowed headers
+// header("Content-Type: application/json");  // Set JSON content type
 
 // Handle OPTIONS request for preflight check (this is necessary for some browsers to allow cross-origin requests)
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -419,7 +419,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
             case 'login_users':
                 include_once __DIR__ . "/cors.php";
-                //echo $post->login_users($data);
+                echo $post->login_users($data);
                 break;
 
             case 'Hoa_adminsignup':
