@@ -7,16 +7,34 @@ ini_set('log_errors', 1);
 // Start output buffering to catch any early errors
 ob_start();
 
-include_once __DIR__ . "/cors.php";
+$allowed_origins = [
+    "https://athletrack.vercel.app",
+    "https://athletrack-git-main-kohitrees-projects.vercel.app",
+    "https://athletrack-kicwhvrgv-kohitrees-projects.vercel.app",
+    "http://localhost:4200",
+    "https://capstonebackend-9wrj.onrender.com"
+];
 
-// Add debugging to see if CORS headers are being set
-error_log("=== REQUEST START ===");
-error_log("CORS Headers - Origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'none'));
-error_log("CORS Headers - Method: " . $_SERVER['REQUEST_METHOD']);
-error_log("CORS Headers - Request URI: " . $_SERVER['REQUEST_URI']);
+$origin = $_SERVER['HTTP_ORIGIN'] ?? "";
+if (in_array($origin, $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
+}
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Credentials: true");
+
+// Handle OPTIONS preflight request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 // Set JSON content type
 header("Content-Type: application/json");
+error_log("=== REQUEST START ===");
+error_log("CORS Headers - Origin: " . $origin);
+error_log("CORS Headers - Method: " . $_SERVER['REQUEST_METHOD']);
+
 
 // Handle OPTIONS request for preflight check (this is necessary for some browsers to allow cross-origin requests)
 //if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -31,23 +49,14 @@ header("Content-Type: application/json");
 // Include required modules with error handling
 try {
     require_once "./modules/get.php";
-    error_log("get.php loaded successfully");
-} catch (Exception $e) {
-    error_log("Error loading get.php: " . $e->getMessage());
-}
-
-try {
     require_once "./modules/post.php";
-    error_log("post.php loaded successfully");
-} catch (Exception $e) {
-    error_log("Error loading post.php: " . $e->getMessage());
-}
-
-try {
     require_once "./config/database.php";
-    error_log("database.php loaded successfully");
+    error_log("All modules loaded successfully");
 } catch (Exception $e) {
-    error_log("Error loading database.php: " . $e->getMessage());
+    error_log("Error loading modules: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(["error" => "Module loading failed: " . $e->getMessage()]);
+    exit;
 }
 
 // Add error handling for database connection
@@ -55,15 +64,6 @@ try {
     $con = new Connection();
     $pdo = $con->connect();
     error_log("Database connection successful");
-    
-    // Test if the hoa_users table exists
-    $stmt = $pdo->query("SHOW TABLES LIKE 'hoa_users'");
-    if ($stmt->rowCount() > 0) {
-        error_log("hoa_users table exists");
-    } else {
-        error_log("hoa_users table does not exist");
-    }
-    
 } catch (Exception $e) {
     error_log("Database connection failed: " . $e->getMessage());
     http_response_code(500);
@@ -89,8 +89,8 @@ if (isset($_REQUEST['request'])) {
     error_log("Request parameter: " . $_REQUEST['request']);
 } else {
     error_log("No request parameter found");
-    echo "Not Found";
     http_response_code(404);
+    echo json_encode(["error" => "No request parameter"]);
     exit;
 }
 
@@ -469,7 +469,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
             case 'login_users':
                 error_log("login_users endpoint called");
                 include_once __DIR__ . "/cors.php";
-                echo $post->login_users($data);
+                echo $post->login_users($data); 
                 break;
 
             case 'Hoa_adminsignup':
