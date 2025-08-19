@@ -1,9 +1,19 @@
 <?php
+// Enable error reporting at the very top
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('log_errors', 1);
+
+// Start output buffering to catch any early errors
+ob_start();
+
 include_once __DIR__ . "/cors.php";
 
 // Add debugging to see if CORS headers are being set
+error_log("=== REQUEST START ===");
 error_log("CORS Headers - Origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'none'));
 error_log("CORS Headers - Method: " . $_SERVER['REQUEST_METHOD']);
+error_log("CORS Headers - Request URI: " . $_SERVER['REQUEST_URI']);
 
 // Set JSON content type
 header("Content-Type: application/json");
@@ -18,10 +28,27 @@ header("Content-Type: application/json");
 //}
 
 
-// Include required modules
-require_once "./modules/get.php";
-require_once "./modules/post.php";
-require_once "./config/database.php";
+// Include required modules with error handling
+try {
+    require_once "./modules/get.php";
+    error_log("get.php loaded successfully");
+} catch (Exception $e) {
+    error_log("Error loading get.php: " . $e->getMessage());
+}
+
+try {
+    require_once "./modules/post.php";
+    error_log("post.php loaded successfully");
+} catch (Exception $e) {
+    error_log("Error loading post.php: " . $e->getMessage());
+}
+
+try {
+    require_once "./config/database.php";
+    error_log("database.php loaded successfully");
+} catch (Exception $e) {
+    error_log("Error loading database.php: " . $e->getMessage());
+}
 
 // Add error handling for database connection
 try {
@@ -45,17 +72,26 @@ try {
 }
 
 // Initialize Get and Post objects
-$get = new Get($pdo);
-$post = new Post($pdo);
+try {
+    $get = new Get($pdo);
+    $post = new Post($pdo);
+    error_log("Get and Post objects initialized successfully");
+} catch (Exception $e) {
+    error_log("Error initializing Get/Post objects: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(["error" => "Service initialization failed"]);
+    exit;
+}
 
 // Check if 'request' parameter is set in the request
 if (isset($_REQUEST['request'])) {
-    // Split the request into an array based on '/'
     $request = explode('/', $_REQUEST['request']);
+    error_log("Request parameter: " . $_REQUEST['request']);
 } else {
-    // If 'request' parameter is not set, return a 404 response
+    error_log("No request parameter found");
     echo "Not Found";
     http_response_code(404);
+    exit;
 }
 
 // Handle requests based on HTTP method
@@ -391,46 +427,13 @@ switch ($_SERVER['REQUEST_METHOD']) {
         // Retrieves JSON-decoded data from php://input using file_get_contents
         $data = json_decode(file_get_contents("php://input"));
         switch ($request[0]) {
-            case 'addTask':
-                echo json_encode($post->add_task($data));
+            case 'test':
+                error_log("Test endpoint called");
+                echo json_encode(["status" => "success", "message" => "Server is working"]);
                 break;
-            case 'updateTask':
-                echo json_encode($post->update_task($data));
-                break;
-
-
-                // case 'delete_task':
-                //     // Return JSON-encoded data for adding employees
-                //     echo json_encode($post->delete_employees($request[1]));
-                //     break;
-
-                // case 'addjob':
-                //     // Return JSON-encoded data for adding jobs
-                //     echo json_encode($post->add_jobs($data));
-                //     break;
-
-                // case 'add_task': //done working
-                //     echo json_encode($post->add_task($data, $request[1]));
-                //     break;
-
-                // case 'updatetask': //done working
-                //     echo json_encode($post->edit_taskk($data, $request[1]));
-                //     break;
-
-                // case 'change_status': //done working
-                //     echo json_encode($post->bagostatus($data, $request[1]));
-                //     break;
-
-                // case 'update_task_order': // new route
-                //     echo json_encode($post->updateangOrder($data, $request[1]));
-                //     break;
-
-                //HOA LOGIN AND SIGNUP
-            case 'signup_users':
-                echo $post->signup_users($data);
-                break;
-
+            
             case 'login_users':
+                error_log("login_users endpoint called");
                 include_once __DIR__ . "/cors.php";
                 echo $post->login_users($data);
                 break;

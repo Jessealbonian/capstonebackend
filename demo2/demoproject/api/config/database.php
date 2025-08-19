@@ -8,11 +8,13 @@ date_default_timezone_set("Asia/Manila");
 set_time_limit(1000);
 
 // Use environment variables for database configuration
-$host = getenv('MYSQLHOST') ?: 'crossover.proxy.rlwy.net';
+$host = getenv('MYSQLHOST') ?: 'mysql.railway.internal';
 $port = getenv('MYSQLPORT') ?: '3306';
 $db   = getenv('MYSQLDATABASE') ?: 'railway';
 $user = getenv('MYSQLUSER') ?: 'root';
 $pass = getenv('MYSQLPASSWORD') ?: 'gLjXtuyGRfwgmafkdLUeIvdOqVBspSnI';
+
+error_log("Database config - Host: $host, Port: $port, DB: $db, User: $user");
 
 //define constants for server credentials/configuration
 define("SERVER", $host);
@@ -31,6 +33,7 @@ class Connection{
 
 
     public function connect(){
+        error_log("Attempting database connection with: " . $this->connectionString);
         return new \PDO($this->connectionString, USER, PASSWORD, $this->options);
     }
 }
