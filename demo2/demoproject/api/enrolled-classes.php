@@ -18,6 +18,11 @@ $origin = $_SERVER['HTTP_ORIGIN'] ?? "";
 // Set CORS headers
 if (in_array($origin, $allowed_origins)) {
     header("Access-Control-Allow-Origin: $origin");
+} else {
+    // For debugging purposes, log the unrecognized origin
+    error_log("Unrecognized origin: " . $origin);
+    // Set default CORS header for the main application
+    header("Access-Control-Allow-Origin: https://athletrack.vercel.app");
 }
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");

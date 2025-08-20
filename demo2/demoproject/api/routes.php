@@ -30,7 +30,7 @@ if (in_array($origin, $allowed_origins)) {
 }
 
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
+    header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Credentials: true");
 
 // Handle OPTIONS preflight request immediately
@@ -57,9 +57,9 @@ if (isset($_REQUEST['request']) && $_REQUEST['request'] === 'test') {
 
 // Include required modules with error handling
 try {
-    require_once "./modules/get.php";
-    require_once "./modules/post.php";
-    require_once "./config/database.php";
+require_once "./modules/get.php";
+require_once "./modules/post.php";
+require_once "./config/database.php";
     error_log("All modules loaded successfully");
 } catch (Exception $e) {
     error_log("Error loading modules: " . $e->getMessage());
@@ -70,8 +70,8 @@ try {
 
 // Add error handling for database connection
 try {
-    $con = new Connection();
-    $pdo = $con->connect();
+$con = new Connection();
+$pdo = $con->connect();
     error_log("Database connection successful");
 } catch (Exception $e) {
     error_log("Database connection failed: " . $e->getMessage());
@@ -82,8 +82,8 @@ try {
 
 // Initialize Get and Post objects
 try {
-    $get = new Get($pdo);
-    $post = new Post($pdo);
+$get = new Get($pdo);
+$post = new Post($pdo);
     error_log("Get and Post objects initialized successfully");
 } catch (Exception $e) {
     error_log("Error initializing Get/Post objects: " . $e->getMessage());
@@ -110,7 +110,7 @@ if (isset($_REQUEST['request'])) {
             error_log("Direct endpoint call detected: login_users");
         } else {
             error_log("No request parameter found and not a direct endpoint");
-            http_response_code(404);
+    http_response_code(404);
             echo json_encode(["error" => "No request parameter"]);
             exit;
         }
@@ -118,7 +118,7 @@ if (isset($_REQUEST['request'])) {
         error_log("No request parameter found");
         http_response_code(404);
         echo json_encode(["error" => "No request parameter"]);
-        exit;
+    exit;
     }
 }
 
@@ -493,7 +493,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
             case 'signup_users':
                 echo $post->signup_users($data);
                 break;
-            
+
             case 'login_users':
                 error_log("login_users endpoint called");
                 include_once __DIR__ . "/cors.php";
