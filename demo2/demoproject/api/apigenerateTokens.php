@@ -48,7 +48,7 @@ try {
     echo json_encode($post->generateTokens($data));
     
 } catch (Exception $e) {
-    error_log("Error in generateTokens: " . $e->getMessage());
+    error_log("Error in apigenerateTokens: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(["error" => "Failed to generate tokens: " . $e->getMessage()]);
 }

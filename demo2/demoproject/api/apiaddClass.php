@@ -48,7 +48,7 @@ try {
     echo json_encode($post->addClass($data));
     
 } catch (Exception $e) {
-    error_log("Error in addClass: " . $e->getMessage());
+    error_log("Error in apiaddClass: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(["error" => "Failed to add class: " . $e->getMessage()]);
 }
