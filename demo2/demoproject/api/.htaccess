@@ -13,6 +13,12 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^api/(.*)$ api_handler.php [QSA,L]
 
+# Route requests that start with 'api' (without slash) to api_handler.php
+RewriteCond %{REQUEST_URI} ^/api
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api(.*)$ api_handler.php [QSA,L]
+
 # Route direct endpoint calls (without /api/ prefix) to routes.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

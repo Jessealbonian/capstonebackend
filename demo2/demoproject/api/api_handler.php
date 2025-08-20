@@ -47,6 +47,10 @@ if (strpos($path, '/api/') === 0) {
 // Remove any trailing slashes
 $endpoint = trim($endpoint, '/');
 
+// Debug logging
+error_log("API Handler - Path: " . $path);
+error_log("API Handler - Endpoint: " . $endpoint);
+
 // Include required modules
 require_once "./modules/get.php";
 require_once "./modules/post.php";
