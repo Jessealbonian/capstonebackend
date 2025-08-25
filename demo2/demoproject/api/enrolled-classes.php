@@ -26,7 +26,7 @@ header("Access-Control-Allow-Credentials: true");
 // Handle OPTIONS preflight request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
-    exit;
+    exit;   
 }
 
 // Set JSON content type
@@ -40,30 +40,31 @@ try {
     $con = new Connection();
     $pdo = $con->connect();
     $get = new Get($pdo);
-    
-    // Get the user ID from the URL path
+
     $request_uri = $_SERVER['REQUEST_URI'];
     $path = parse_url($request_uri, PHP_URL_PATH);
     $path_parts = explode('/', trim($path, '/'));
-    
-    // Look for the pattern /api/enrolled-classes/id/{userId}
+
+    // Check for /api/enrolled-classes/id/{userId}
     $userId = null;
     for ($i = 0; $i < count($path_parts) - 1; $i++) {
-        if ($path_parts[$i] === 'enrolled-classes' && 
-            isset($path_parts[$i + 1]) && $path_parts[$i + 1] === 'id' && 
+        if ($path_parts[$i] === 'enrolled-classes' &&
+            isset($path_parts[$i + 1]) && $path_parts[$i + 1] === 'id' &&
             isset($path_parts[$i + 2])) {
             $userId = intval($path_parts[$i + 2]);
             break;
         }
     }
-    
+
     if ($userId) {
         echo json_encode($get->getEnrolledClassesById($userId));
+    } else if (in_array('enrolled-classes', $path_parts)) {
+        // If just /api/enrolled-classes, return all
+        echo json_encode($get->getAllEnrolledClasses());
     } else {
         http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'user_id is required']);
+        echo json_encode(['status' => 'error', 'message' => 'Invalid request']);
     }
-    
 } catch (Exception $e) {
     error_log("Error in enrolled-classes: " . $e->getMessage());
     http_response_code(500);

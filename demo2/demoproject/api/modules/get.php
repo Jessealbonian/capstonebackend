@@ -1263,6 +1263,26 @@ public function getPersonalCustomerCare($id)
         }
     }
 
+    public function getAllEnrolledClasses() {
+        try {
+            $sql = "SELECT DISTINCT cg.class_id AS id, cg.Requestedbycoach AS coach_username, cg.user_id
+                    FROM codegen cg
+                    WHERE cg.class_id IS NOT NULL";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $classes = array_map(function ($r) {
+                $r['title'] = 'Class ' . $r['id'];
+                return $r;
+            }, $rows);
+
+            return $this->sendPayload($classes, "success", "Successfully retrieved all enrolled classes.", 200);
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, "failed", "Failed to retrieve all enrolled classes: " . $e->getMessage(), 500);
+        }
+    }
+
     public function getClassRoutines($classId) {
         try {
             // Support weekly schema: columns like mondayRoutine, mondayintensity, ...
