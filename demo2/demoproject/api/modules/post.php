@@ -2143,31 +2143,15 @@ class Post extends GlobalMethods
             error_log("submitRoutineCompletion called with data: " . print_r($postData, true));
             error_log("Files: " . print_r($files, true));
             
-            if (!isset($postData['routine_id']) || !isset($postData['student_username'])) {
+            if (!isset($postData['routine_id']) || !isset($postData['user_id'])) {
                 return [
                     "status" => "error",
-                    "message" => "Routine ID and student username are required"
+                    "message" => "Routine ID and user ID are required"
                 ];
             }
 
             $routineId = $postData['routine_id'];
-            $studentUsername = $postData['student_username'];
-
-            // Get user ID from username
-            $userSql = "SELECT user_id FROM hoa_users WHERE username = :username";
-            $userStmt = $this->pdo->prepare($userSql);
-            $userStmt->bindParam(':username', $studentUsername, PDO::PARAM_STR);
-            $userStmt->execute();
-            $userData = $userStmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$userData) {
-                return [
-                    "status" => "error",
-                    "message" => "Student not found"
-                ];
-            }
-
-            $userId = $userData['user_id'];
+            $userId = $postData['user_id'];
 
             // Check if class_id exists in class_routines table
             $classCheckSql = "SELECT class_id FROM class_routines WHERE class_id = :class_id";
@@ -2251,14 +2235,13 @@ class Post extends GlobalMethods
 
             return [
                 "status" => "success",
-                "message" => "Routine completed successfully",
-                "imagePath" => $fileName
+                "message" => "Routine completion submitted successfully"
             ];
-
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
+            error_log("submitRoutineCompletion Exception: " . $e->getMessage());
             return [
                 "status" => "error",
-                "message" => "Failed to submit routine completion: " . $e->getMessage()
+                "message" => "Exception: " . $e->getMessage()
             ];
         }
     }

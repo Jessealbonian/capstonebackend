@@ -230,6 +230,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($get->getClasses());
                 break;
 
+            case 'getAllEnrolledClasses':
+                echo json_encode($get->getAllEnrolledClasses());
+                break;
+
             case 'getClassAttendance':
                 // expects class_id, year, month, day as query params
                 $classId = isset($_GET['class_id']) ? intval($_GET['class_id']) : null;
