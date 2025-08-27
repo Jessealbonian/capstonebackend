@@ -1355,7 +1355,7 @@ public function getPersonalCustomerCare($id)
                 $coachId = $cgRow['Requestedbycoach'];
                 
                 // Get the actual coach username from hoa_admins table
-                $adminStmt = $this->pdo->prepare("SELECT username FROM hoa_admins WHERE user_id = :coach_id");
+                $adminStmt = $this->pdo->prepare("SELECT username FROM hoa_admins WHERE admin_id = :coach_id");
                 $adminStmt->bindParam(':coach_id', $coachId, PDO::PARAM_INT);
                 $adminStmt->execute();
                 $adminRow = $adminStmt->fetch(PDO::FETCH_ASSOC);
