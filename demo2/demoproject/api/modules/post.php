@@ -2139,19 +2139,21 @@ class Post extends GlobalMethods
 
     public function submitRoutineCompletion($postData, $files) {
         try {
-            // Debug logging
-            error_log("submitRoutineCompletion called with data: " . print_r($postData, true));
-            error_log("Files: " . print_r($files, true));
+            error_log("=== submitRoutineCompletion START ===");
+            error_log("POST data received: " . print_r($postData, true));
+            error_log("FILES data received: " . print_r($files, true));
             
-            if (!isset($postData['routine_id']) || !isset($postData['user_id'])) {
+            // Validate required data
+            if (!isset($postData['routineId']) || !isset($postData['userId'])) {
+                error_log("Missing required data: routineId or userId");
                 return [
                     "status" => "error",
-                    "message" => "Routine ID and user ID are required"
+                    "message" => "Missing required data"
                 ];
             }
 
-            $routineId = $postData['routine_id'];
-            $userId = $postData['user_id'];
+            $routineId = $postData['routineId'];
+            $userId = $postData['userId'];
 
             // Check if class_id exists in class_routines table
             $classCheckSql = "SELECT class_id FROM class_routines WHERE class_id = :class_id";
@@ -2167,17 +2169,13 @@ class Post extends GlobalMethods
                 ];
             }
 
-            // Validate image file
+            // Handle file upload
             if (!isset($files['image']) || $files['image']['error'] !== UPLOAD_ERR_OK) {
-                error_log("Image file validation failed: " . print_r($files['image'] ?? 'no image', true));
                 return [
                     "status" => "error",
-                    "message" => "Valid image file is required"
+                    "message" => "Image upload failed"
                 ];
             }
-
-            error_log("=== ABOUT TO START CLOUDINARY UPLOAD ===");
-            error_log("Image file details: " . print_r($files['image'], true));
 
             // Cloudinary configuration
             $cloudinaryConfig = $this->getCloudinaryConfig();
@@ -2269,51 +2267,95 @@ class Post extends GlobalMethods
     // Helper method to upload image to Cloudinary
     private function uploadToCloudinary($file, $config) {
         try {
+            error_log("Starting Cloudinary upload with config: " . print_r($config, true));
+            error_log("File info: " . print_r($file, true));
+            
+            // Validate file
+            if (!isset($file['tmp_name']) || !file_exists($file['tmp_name'])) {
+                error_log("File validation failed: tmp_name not found or file doesn't exist");
+                return false;
+            }
+            
+            // Check file size
+            $fileSize = filesize($file['tmp_name']);
+            error_log("File size: " . $fileSize . " bytes");
+            
+            if ($fileSize === 0) {
+                error_log("File is empty");
+                return false;
+            }
+            
             // Create unique filename
             $fileName = 'routine_' . time() . '_' . uniqid();
+            error_log("Generated filename: " . $fileName);
             
-            // Prepare the file data for Cloudinary
-            $fileData = base64_encode(file_get_contents($file['tmp_name']));
-            $data = 'data:' . $file['type'] . ';base64,' . $fileData;
-            
-            // Cloudinary upload URL
+            // Cloudinary upload URL for signed uploads
             $uploadUrl = 'https://api.cloudinary.com/v1_1/' . $config['cloud_name'] . '/image/upload';
+            error_log("Upload URL: " . $uploadUrl);
             
-            // Prepare upload data
-            $uploadData = [
-                'file' => $data,
-                'public_id' => $config['folder'] . '/' . $fileName,
-                'folder' => $config['folder'],
-                'resource_type' => 'image'
-            ];
-            
-            // Create cURL request
+            // Create cURL request with file upload (not base64)
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $uploadUrl);
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $uploadData);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            
+            // Use multipart form data for file upload
+            $postFields = [
+                'file' => new CURLFile($file['tmp_name'], $file['type'], $file['name']),
+                'public_id' => $config['folder'] . '/' . $fileName,
+                'folder' => $config['folder']
+            ];
+            
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Authorization: Basic ' . base64_encode($config['api_key'] . ':' . $config['api_secret'])
             ]);
             
+            error_log("cURL options set, executing request...");
+            error_log("Post fields: " . print_r($postFields, true));
+            
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            $curlInfo = curl_getinfo($ch);
+            
+            error_log("cURL response received - HTTP Code: " . $httpCode);
+            error_log("cURL error (if any): " . $curlError);
+            error_log("Response body: " . $response);
+            
             curl_close($ch);
+            
+            if ($curlError) {
+                error_log("cURL error occurred: " . $curlError);
+                return false;
+            }
             
             if ($httpCode === 200) {
                 $result = json_decode($response, true);
                 if (isset($result['secure_url'])) {
                     error_log("Cloudinary upload successful: " . $result['secure_url']);
                     return $result['secure_url'];
+                } else {
+                    error_log("Upload response missing secure_url: " . print_r($result, true));
+                    return false;
                 }
+            } else {
+                error_log("Cloudinary upload failed. HTTP Code: " . $httpCode . ", Response: " . $response);
+                
+                // Try to parse error response
+                $errorResult = json_decode($response, true);
+                if ($errorResult && isset($errorResult['error'])) {
+                    error_log("Cloudinary error details: " . print_r($errorResult['error'], true));
+                }
+                
+                return false;
             }
-            
-            error_log("Cloudinary upload failed. HTTP Code: " . $httpCode . ", Response: " . $response);
-            return false;
             
         } catch (Exception $e) {
             error_log("Cloudinary upload exception: " . $e->getMessage());
+            error_log("Exception trace: " . $e->getTraceAsString());
             return false;
         }
     }
