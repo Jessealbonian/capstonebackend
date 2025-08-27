@@ -2175,19 +2175,21 @@ class Post extends GlobalMethods
                 ];
             }
 
-            $uploadDir = "./uploads/routines/";
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0777, true);
-            }
+            // Cloudinary configuration
+            $cloudinaryConfig = [
+                'cloud_name' => 'dtljwbojw',
+                'api_key' => '179567916365545',
+                'api_secret' => 'Ecug-lmZQyU_W03shr4O1PRXSAY',
+                'folder' => 'athletrack'
+            ];
 
-            $fileExtension = pathinfo($files['image']['name'], PATHINFO_EXTENSION);
-            $fileName = 'routine_' . $routineId . '_' . $userId . '_' . time() . '.' . $fileExtension;
-            $filePath = $uploadDir . $fileName;
-
-            if (!move_uploaded_file($files['image']['tmp_name'], $filePath)) {
+            // Upload to Cloudinary
+            $cloudinaryUrl = $this->uploadToCloudinary($files['image'], $cloudinaryConfig);
+            
+            if (!$cloudinaryUrl) {
                 return [
                     "status" => "error",
-                    "message" => "Failed to save image"
+                    "message" => "Failed to upload image to Cloudinary"
                 ];
             }
 
@@ -2229,7 +2231,7 @@ class Post extends GlobalMethods
                 ':intensity' => $postData['intensity'] ?? 'Low',
                 ':philippine_time' => $philippineTimeStr,
                 ':philippine_date' => $philippineDate,
-                ':image_path' => $fileName
+                ':image_path' => $cloudinaryUrl
             ]);
 
             if (!$result) {
@@ -2242,7 +2244,8 @@ class Post extends GlobalMethods
 
             return [
                 "status" => "success",
-                "message" => "Routine completion submitted successfully"
+                "message" => "Routine completion submitted successfully",
+                "image_url" => $cloudinaryUrl
             ];
         } catch (Exception $e) {
             error_log("submitRoutineCompletion Exception: " . $e->getMessage());
@@ -2250,6 +2253,58 @@ class Post extends GlobalMethods
                 "status" => "error",
                 "message" => "Exception: " . $e->getMessage()
             ];
+        }
+    }
+
+    // Helper method to upload image to Cloudinary
+    private function uploadToCloudinary($file, $config) {
+        try {
+            // Create unique filename
+            $fileName = 'routine_' . time() . '_' . uniqid();
+            
+            // Prepare the file data for Cloudinary
+            $fileData = base64_encode(file_get_contents($file['tmp_name']));
+            $data = 'data:' . $file['type'] . ';base64,' . $fileData;
+            
+            // Cloudinary upload URL
+            $uploadUrl = 'https://api.cloudinary.com/v1_1/' . $config['cloud_name'] . '/image/upload';
+            
+            // Prepare upload data
+            $uploadData = [
+                'file' => $data,
+                'public_id' => $config['folder'] . '/' . $fileName,
+                'folder' => $config['folder'],
+                'resource_type' => 'image'
+            ];
+            
+            // Create cURL request
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $uploadUrl);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $uploadData);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Basic ' . base64_encode($config['api_key'] . ':' . $config['api_secret'])
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode === 200) {
+                $result = json_decode($response, true);
+                if (isset($result['secure_url'])) {
+                    error_log("Cloudinary upload successful: " . $result['secure_url']);
+                    return $result['secure_url'];
+                }
+            }
+            
+            error_log("Cloudinary upload failed. HTTP Code: " . $httpCode . ", Response: " . $response);
+            return false;
+            
+        } catch (Exception $e) {
+            error_log("Cloudinary upload exception: " . $e->getMessage());
+            return false;
         }
     }
 }
