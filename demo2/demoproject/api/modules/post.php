@@ -2143,17 +2143,22 @@ class Post extends GlobalMethods
             error_log("POST data received: " . print_r($postData, true));
             error_log("FILES data received: " . print_r($files, true));
             
-            // Validate required data
-            if (!isset($postData['routineId']) || !isset($postData['userId'])) {
+            // Validate required data - accept both camelCase and snake_case
+            $routineId = $postData['routineId'] ?? $postData['routine_id'] ?? null;
+            $userId = $postData['userId'] ?? $postData['user_id'] ?? null;
+            
+            if (!$routineId || !$userId) {
                 error_log("Missing required data: routineId or userId");
+                error_log("Available POST data keys: " . implode(', ', array_keys($postData)));
+                error_log("routineId found: " . ($routineId ? $routineId : 'NOT FOUND'));
+                error_log("userId found: " . ($userId ? $userId : 'NOT FOUND'));
                 return [
                     "status" => "error",
                     "message" => "Missing required data"
                 ];
             }
-
-            $routineId = $postData['routineId'];
-            $userId = $postData['userId'];
+            
+            error_log("Extracted routineId: " . $routineId . ", userId: " . $userId);
 
             // Check if class_id exists in class_routines table
             $classCheckSql = "SELECT class_id FROM class_routines WHERE class_id = :class_id";
@@ -2231,12 +2236,20 @@ class Post extends GlobalMethods
             $insertSql = "INSERT INTO routine_history (class_id, user_id, routine, routine_intensity, time_of_submission, date_of_submission, img) 
                           VALUES (:class_id, :user_id, :routine, :intensity, :philippine_time, :philippine_date, :image_path)";
             
+            // Extract routine and intensity with fallbacks for field name compatibility
+            $routine = $postData['routine'] ?? $postData['routine_name'] ?? 'Weekly Routine';
+            $intensity = $postData['intensity'] ?? $postData['routine_intensity'] ?? 'Low';
+            
+            error_log("Extracted routine: " . $routine . ", intensity: " . $intensity);
+            error_log("All available POST data keys: " . implode(', ', array_keys($postData)));
+            error_log("POST data values: " . print_r($postData, true));
+            
             $insertStmt = $this->pdo->prepare($insertSql);
             $result = $insertStmt->execute([
                 ':class_id' => $routineId,
                 ':user_id' => $userId,
-                ':routine' => $postData['routine'] ?? 'Weekly Routine',
-                ':intensity' => $postData['intensity'] ?? 'Low',
+                ':routine' => $routine,
+                ':intensity' => $intensity,
                 ':philippine_time' => $philippineTimeStr,
                 ':philippine_date' => $philippineDate,
                 ':image_path' => $cloudinaryUrl
