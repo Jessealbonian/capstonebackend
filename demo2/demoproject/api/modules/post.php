@@ -118,6 +118,39 @@ class Post extends GlobalMethods
                 ];
             }
 
+            // Check if there's an image file to upload
+            $imageUrl = null;
+            if (!empty($_FILES['image']) && isset($_FILES['image']['tmp_name']) && is_uploaded_file($_FILES['image']['tmp_name'])) {
+                error_log("=== ADD TASK WITH IMAGE START ===");
+                error_log("Image file details: " . print_r($_FILES['image'], true));
+                
+                // Cloudinary configuration
+                $cloudinaryConfig = $this->getCloudinaryConfig();
+                
+                // Test Cloudinary connection first
+                $connectionTest = $this->testCloudinaryConnection($cloudinaryConfig);
+                if (!$connectionTest['success']) {
+                    error_log("Cloudinary connection test failed: " . $connectionTest['message']);
+                    return [
+                        "status" => "error",
+                        "message" => "Cloudinary connection failed: " . $connectionTest['message']
+                    ];
+                }
+                error_log("Cloudinary connection test successful: " . $connectionTest['message']);
+                
+                // Upload to Cloudinary
+                $imageUrl = $this->uploadToCloudinary($_FILES['image'], $cloudinaryConfig);
+                
+                if (!$imageUrl) {
+                    return [
+                        "status" => "error",
+                        "message" => "Failed to upload image to Cloudinary"
+                    ];
+                }
+                
+                error_log("Task image uploaded to Cloudinary: " . $imageUrl);
+            }
+
             $sql = "INSERT INTO task (
                         user_id,
                         title,
@@ -143,14 +176,15 @@ class Post extends GlobalMethods
                 ':description' => isset($data->description) && $data->description !== '' ? trim($data->description) : null,
                 ':date_due' => isset($data->date_due) && $data->date_due !== '' ? trim($data->date_due) : null,
                 ':time_due' => isset($data->time_due) && $data->time_due !== '' ? trim($data->time_due) : null,
-                ':image' => isset($data->image) && $data->image !== '' ? trim($data->image) : null,
+                ':image' => $imageUrl ?? (isset($data->image) && $data->image !== '' ? trim($data->image) : null),
                 ':status' => trim($data->status)
             ]);
 
             return [
                 "status" => "success",
                 "message" => "Task added successfully",
-                "task_id" => $this->pdo->lastInsertId()
+                "task_id" => $this->pdo->lastInsertId(),
+                "image_url" => $imageUrl
             ];
         } catch (\PDOException $e) {
             return [
@@ -180,33 +214,48 @@ class Post extends GlobalMethods
 
             // If multipart form (screenshot for completion)
             if (!empty($_FILES['image']) && isset($_FILES['image']['tmp_name']) && is_uploaded_file($_FILES['image']['tmp_name'])) {
-                $uploadDir = __DIR__ . '/../uploads/tasks/';
-                if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0777, true);
-                }
-                $fileName = uniqid('task_') . '_' . basename($_FILES['image']['name']);
-                $targetPath = $uploadDir . $fileName;
-                if (!move_uploaded_file($_FILES['image']['tmp_name'], $targetPath)) {
+                error_log("=== TASK IMAGE UPLOAD START ===");
+                error_log("Image file details: " . print_r($_FILES['image'], true));
+                
+                // Cloudinary configuration
+                $cloudinaryConfig = $this->getCloudinaryConfig();
+                
+                // Test Cloudinary connection first
+                $connectionTest = $this->testCloudinaryConnection($cloudinaryConfig);
+                if (!$connectionTest['success']) {
+                    error_log("Cloudinary connection test failed: " . $connectionTest['message']);
                     return [
                         "status" => "error",
-                        "message" => "Failed to upload image"
+                        "message" => "Cloudinary connection failed: " . $connectionTest['message']
+                    ];
+                }
+                error_log("Cloudinary connection test successful: " . $connectionTest['message']);
+                
+                // Upload to Cloudinary
+                $cloudinaryUrl = $this->uploadToCloudinary($_FILES['image'], $cloudinaryConfig);
+                
+                if (!$cloudinaryUrl) {
+                    return [
+                        "status" => "error",
+                        "message" => "Failed to upload image to Cloudinary"
                     ];
                 }
 
-                // Store relative path accessible from server
-                $relativePath = 'uploads/tasks/' . $fileName;
+                error_log("Task image uploaded to Cloudinary: " . $cloudinaryUrl);
 
+                // Store Cloudinary URL in database
                 $sql = "UPDATE task SET image = :image, status = :status WHERE task_id = :task_id";
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->execute([
-                    ':image' => $relativePath,
+                    ':image' => $cloudinaryUrl,
                     ':status' => isset($_POST['status']) ? trim($_POST['status']) : 'Completed',
                     ':task_id' => $taskId
                 ]);
 
                 return [
                     "status" => "success",
-                    "message" => "Task updated with screenshot"
+                    "message" => "Task updated with screenshot",
+                    "image_url" => $cloudinaryUrl
                 ];
             }
 
@@ -2157,7 +2206,7 @@ class Post extends GlobalMethods
                     "message" => "Missing required data"
                 ];
             }
-            
+
             error_log("Extracted routineId: " . $routineId . ", userId: " . $userId);
 
             // Check if class_id exists in class_routines table
