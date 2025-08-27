@@ -128,7 +128,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
     case 'GET':
         switch ($request[0]) {
             case 'getTasks':
-                echo json_encode($get->get_tasks());
+                $user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : null;
+                echo json_encode($get->get_tasks($user_id));
                 break;
                 // case 'todolist':
                 //     // Return JSON-encoded data for getting employees

@@ -11,16 +11,31 @@ class Get extends GlobalMethods
     }
 
     // TASKS
-    public function get_tasks()
+    public function get_tasks($user_id = null)
     {
-        $sqlString = "SELECT task_id, user_id, title, description, date_due, time_due, image, status FROM task ORDER BY date_due DESC, time_due DESC";
-        $result = $this->executeQuery($sqlString);
+        if ($user_id !== null) {
+            $sqlString = "SELECT task_id, user_id, title, description, date_due, time_due, image, status FROM task WHERE user_id = :user_id ORDER BY date_due DESC, time_due DESC";
+            $stmt = $this->pdo->prepare($sqlString);
+            $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+            $stmt->execute();
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if ($result) {
+                return $this->sendPayload($result, "success", "Successfully retrieved tasks for user.", 200);
+            } else {
+                return $this->sendPayload([], "success", "No tasks found for user.", 200);
+            }
+        } else {
+            // Fallback to original behavior if no user_id provided
+            $sqlString = "SELECT task_id, user_id, title, description, date_due, time_due, image, status FROM task ORDER BY date_due DESC, time_due DESC";
+            $result = $this->executeQuery($sqlString);
 
-        if ($result['code'] == 200) {
-            return $this->sendPayload($result['data'], "success", "Successfully retrieved tasks.", $result['code']);
+            if ($result['code'] == 200) {
+                return $this->sendPayload($result['data'], "success", "Successfully retrieved all tasks.", $result['code']);
+            }
+
+            return $this->sendPayload(null, "failed", "Failed to retrieve tasks.", $result['code']);
         }
-
-        return $this->sendPayload(null, "failed", "Failed to retrieve tasks.", $result['code']);
     }
 
     public function executeQuery($sql)

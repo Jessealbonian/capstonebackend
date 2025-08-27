@@ -495,7 +495,7 @@ ALTER TABLE `routine_history`
 -- Constraints for table `task`
 --
 ALTER TABLE `task`
-  ADD CONSTRAINT `task_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `task_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `hoa_users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `tripping_request`
