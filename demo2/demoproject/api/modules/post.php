@@ -2306,7 +2306,31 @@ class Post extends GlobalMethods
             $uploadUrl = 'https://api.cloudinary.com/v1_1/' . $config['cloud_name'] . '/image/upload';
             error_log("Upload URL: " . $uploadUrl);
             
-            // Create cURL request with file upload (not base64)
+            // Generate signature for signed upload
+            $timestamp = time();
+            $publicId = $config['folder'] . '/' . $fileName;
+            
+            // Create signature parameters
+            $params = [
+                'public_id' => $publicId,
+                'timestamp' => $timestamp
+            ];
+            
+            // Sort parameters alphabetically
+            ksort($params);
+            
+            // Create signature string
+            $signatureString = '';
+            foreach ($params as $key => $value) {
+                $signatureString .= $key . '=' . $value . '&';
+            }
+            $signatureString = rtrim($signatureString, '&');
+            
+            // Generate signature
+            $signature = sha1($signatureString . $config['api_secret']);
+            error_log("Generated signature: " . $signature . " from string: " . $signatureString);
+            
+            // Create cURL request with file upload and signature
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $uploadUrl);
             curl_setopt($ch, CURLOPT_POST, true);
@@ -2314,17 +2338,16 @@ class Post extends GlobalMethods
             curl_setopt($ch, CURLOPT_TIMEOUT, 60);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
             
-            // Use multipart form data for file upload
+            // Use multipart form data for file upload with signature
             $postFields = [
                 'file' => new CURLFile($file['tmp_name'], $file['type'], $file['name']),
-                'public_id' => $config['folder'] . '/' . $fileName,
-                'folder' => $config['folder']
+                'public_id' => $publicId,
+                'timestamp' => $timestamp,
+                'signature' => $signature,
+                'api_key' => $config['api_key']
             ];
             
             curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Basic ' . base64_encode($config['api_key'] . ':' . $config['api_secret'])
-            ]);
             
             error_log("cURL options set, executing request...");
             error_log("Post fields: " . print_r($postFields, true));
