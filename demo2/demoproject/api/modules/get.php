@@ -1343,36 +1343,53 @@ public function getPersonalCustomerCare($id)
     // Return class meta info (title/description/coach) for a class_id
     public function getClassInfoById($classId) {
         try {
+            error_log("=== getClassInfoById START ===");
+            error_log("Class ID: " . $classId);
+            
             $coach = null;
             
             // Get the coach ID from codegen table
+            error_log("Step 1: Querying codegen table for class_id: " . $classId);
             $coachStmt = $this->pdo->prepare("SELECT Requestedbycoach FROM codegen WHERE class_id = :class_id ORDER BY code_id DESC LIMIT 1");
             $coachStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
             $coachStmt->execute();
             $cgRow = $coachStmt->fetch(PDO::FETCH_ASSOC);
             
+            error_log("Codegen query result: " . print_r($cgRow, true));
+            
             if ($cgRow && isset($cgRow['Requestedbycoach'])) {
                 $coachId = $cgRow['Requestedbycoach'];
+                error_log("Step 2: Found coach ID: " . $coachId);
                 
                 // Get the actual coach username from hoa_admins table
+                error_log("Step 3: Querying hoa_admins table for admin_id: " . $coachId);
                 $adminStmt = $this->pdo->prepare("SELECT username FROM hoa_admins WHERE admin_id = :coach_id");
                 $adminStmt->bindParam(':coach_id', $coachId, PDO::PARAM_INT);
                 $adminStmt->execute();
                 $adminRow = $adminStmt->fetch(PDO::FETCH_ASSOC);
                 
+                error_log("Hoa_admins query result: " . print_r($adminRow, true));
+                
                 if ($adminRow && isset($adminRow['username'])) {
                     $coach = $adminRow['username'];
+                    error_log("Step 4: Found coach username: " . $coach);
                 } else {
                     // Fallback to ID if username not found
                     $coach = 'Coach ID: ' . $coachId;
+                    error_log("Step 4: No username found, using fallback: " . $coach);
                 }
+            } else {
+                error_log("Step 2: No Requestedbycoach found in codegen table");
             }
 
             // Get basic class info - use simpler query to avoid column issues
+            error_log("Step 5: Querying class_routines table for class_id: " . $classId);
             $stmt = $this->pdo->prepare("SELECT id, class_id FROM class_routines WHERE class_id = :class_id LIMIT 1");
             $stmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            error_log("Class_routines query result: " . print_r($row, true));
 
             $payload = [
                 'id' => (int)$classId,
@@ -1380,9 +1397,28 @@ public function getPersonalCustomerCare($id)
                 'description' => null, // Set to null for now
                 'coach_username' => $coach
             ];
+            
+            error_log("Final payload: " . print_r($payload, true));
+            error_log("=== getClassInfoById END ===");
 
             return $this->sendPayload($payload, 'success', 'Class info fetched', 200);
         } catch (PDOException $e) {
+            error_log("=== getClassInfoById ERROR ===");
+            error_log("PDO Error: " . $e->getMessage());
+            error_log("Error Code: " . $e->getCode());
+            error_log("File: " . $e->getFile());
+            error_log("Line: " . $e->getLine());
+            error_log("Stack trace: " . $e->getTraceAsString());
+            error_log("=== END ERROR ===");
+            return $this->sendPayload(null, 'failed', 'Failed to fetch class info: ' . $e->getMessage(), 500);
+        } catch (Exception $e) {
+            error_log("=== getClassInfoById GENERAL ERROR ===");
+            error_log("General Error: " . $e->getMessage());
+            error_log("Error Type: " . get_class($e));
+            error_log("File: " . $e->getFile());
+            error_log("Line: " . $e->getLine());
+            error_log("Stack trace: " . $e->getTraceAsString());
+            error_log("=== END GENERAL ERROR ===");
             return $this->sendPayload(null, 'failed', 'Failed to fetch class info: ' . $e->getMessage(), 500);
         }
     }
