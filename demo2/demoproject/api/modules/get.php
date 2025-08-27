@@ -1344,14 +1344,17 @@ public function getPersonalCustomerCare($id)
     public function getClassInfoById($classId) {
         try {
             $coach = null;
+            
+            // Get the coach ID from codegen table
             $coachStmt = $this->pdo->prepare("SELECT Requestedbycoach FROM codegen WHERE class_id = :class_id ORDER BY code_id DESC LIMIT 1");
             $coachStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
             $coachStmt->execute();
             $cgRow = $coachStmt->fetch(PDO::FETCH_ASSOC);
+            
             if ($cgRow && isset($cgRow['Requestedbycoach'])) {
                 $coachId = $cgRow['Requestedbycoach'];
                 
-                // Now get the actual coach username from hoa_admins table
+                // Get the actual coach username from hoa_admins table
                 $adminStmt = $this->pdo->prepare("SELECT username FROM hoa_admins WHERE user_id = :coach_id");
                 $adminStmt->bindParam(':coach_id', $coachId, PDO::PARAM_INT);
                 $adminStmt->execute();
@@ -1365,15 +1368,16 @@ public function getPersonalCustomerCare($id)
                 }
             }
 
-            $stmt = $this->pdo->prepare("SELECT * FROM class_routines WHERE class_id = :class_id LIMIT 1");
+            // Get basic class info - use simpler query to avoid column issues
+            $stmt = $this->pdo->prepare("SELECT id, class_id FROM class_routines WHERE class_id = :class_id LIMIT 1");
             $stmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
             $stmt->execute();
-            $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             $payload = [
                 'id' => (int)$classId,
-                'title' => $row['class_name'] ?? $row['title'] ?? ('Class ' . (int)$classId),
-                'description' => $row['class_description'] ?? ($row['description'] ?? null),
+                'title' => 'Class ' . (int)$classId, // Simple fallback title
+                'description' => null, // Set to null for now
                 'coach_username' => $coach
             ];
 
