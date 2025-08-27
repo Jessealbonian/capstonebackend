@@ -599,6 +599,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($post->submitRoutineCompletion($_POST, $_FILES));
                 break;
 
+            case 'testCloudinaryConnection':
+                echo json_encode($post->testCloudinaryConnectionEndpoint());
+                break;
+
             case 'deleteTurnover':
                 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $data = json_decode(file_get_contents("php://input"), true);

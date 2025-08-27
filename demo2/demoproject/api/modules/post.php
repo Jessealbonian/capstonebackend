@@ -2178,6 +2178,17 @@ class Post extends GlobalMethods
             // Cloudinary configuration
             $cloudinaryConfig = $this->getCloudinaryConfig();
 
+            // Test Cloudinary connection first
+            $connectionTest = $this->testCloudinaryConnection($cloudinaryConfig);
+            if (!$connectionTest['success']) {
+                error_log("Cloudinary connection test failed: " . $connectionTest['message']);
+                return [
+                    "status" => "error",
+                    "message" => "Cloudinary connection failed: " . $connectionTest['message']
+                ];
+            }
+            error_log("Cloudinary connection test successful: " . $connectionTest['message']);
+
             // Upload to Cloudinary
             $cloudinaryUrl = $this->uploadToCloudinary($files['image'], $cloudinaryConfig);
             
@@ -2369,6 +2380,93 @@ class Post extends GlobalMethods
             'api_secret' => 'Ecug-lmZQyU_W03shr4O1PRXSAY',
             'folder' => 'athletrack'
         ];
+    }
+
+    // Test Cloudinary connection and verify account credentials
+    private function testCloudinaryConnection($config) {
+        try {
+            error_log("Testing Cloudinary connection with config: " . print_r($config, true));
+            
+            // Test 1: Basic connectivity to Cloudinary API
+            $testUrl = 'https://api.cloudinary.com/v1_1/' . $config['cloud_name'] . '/resources/image';
+            error_log("Testing URL: " . $testUrl);
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $testUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Authorization: Basic ' . base64_encode($config['api_key'] . ':' . $config['api_secret'])
+            ]);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+            
+            error_log("Cloudinary test response - HTTP Code: " . $httpCode . ", Response: " . $response);
+            
+            if ($curlError) {
+                error_log("cURL error: " . $curlError);
+                return ['success' => false, 'message' => 'Network error: ' . $curlError];
+            }
+            
+            if ($httpCode === 200) {
+                $result = json_decode($response, true);
+                if ($result && isset($result['resources'])) {
+                    error_log("Successfully connected to Cloudinary account: " . $config['cloud_name']);
+                    return [
+                        'success' => true, 
+                        'message' => 'Successfully connected to Cloudinary account: ' . $config['cloud_name'],
+                        'account_info' => [
+                            'cloud_name' => $config['cloud_name'],
+                            'resource_count' => count($result['resources']),
+                            'api_key' => substr($config['api_key'], 0, 8) . '...' // Partial key for security
+                        ]
+                    ];
+                } else {
+                    error_log("Unexpected response format from Cloudinary");
+                    return ['success' => false, 'message' => 'Unexpected response format from Cloudinary'];
+                }
+            } elseif ($httpCode === 401) {
+                error_log("Authentication failed - check API key and secret");
+                return ['success' => false, 'message' => 'Authentication failed - check API key and secret'];
+            } elseif ($httpCode === 404) {
+                error_log("Cloud name not found: " . $config['cloud_name']);
+                return ['success' => false, 'message' => 'Cloud name not found: ' . $config['cloud_name']];
+            } else {
+                error_log("Cloudinary API returned HTTP code: " . $httpCode);
+                return ['success' => false, 'message' => 'Cloudinary API returned HTTP code: ' . $httpCode];
+            }
+            
+        } catch (Exception $e) {
+            error_log("Cloudinary connection test exception: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
+        }
+    }
+
+    // Public endpoint to test Cloudinary connection
+    public function testCloudinaryConnectionEndpoint() {
+        try {
+            $config = $this->getCloudinaryConfig();
+            $result = $this->testCloudinaryConnection($config);
+            
+            return [
+                'status' => $result['success'] ? 'success' : 'error',
+                'message' => $result['message'],
+                'config_info' => [
+                    'cloud_name' => $config['cloud_name'],
+                    'api_key' => substr($config['api_key'], 0, 8) . '...',
+                    'folder' => $config['folder']
+                ],
+                'details' => $result
+            ];
+        } catch (Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Test endpoint exception: ' . $e->getMessage()
+            ];
+        }
     }
 }
 
