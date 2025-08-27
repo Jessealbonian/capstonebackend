@@ -2176,12 +2176,7 @@ class Post extends GlobalMethods
             }
 
             // Cloudinary configuration
-            $cloudinaryConfig = [
-                'cloud_name' => 'dtljwbojw',
-                'api_key' => '179567916365545',
-                'api_secret' => 'Ecug-lmZQyU_W03shr4O1PRXSAY',
-                'folder' => 'athletrack'
-            ];
+            $cloudinaryConfig = $this->getCloudinaryConfig();
 
             // Upload to Cloudinary
             $cloudinaryUrl = $this->uploadToCloudinary($files['image'], $cloudinaryConfig);
@@ -2306,6 +2301,60 @@ class Post extends GlobalMethods
             error_log("Cloudinary upload exception: " . $e->getMessage());
             return false;
         }
+    }
+
+    // Check if Cloudinary is properly configured
+    private function isCloudinaryConfigured(): bool {
+        return getenv('CLOUDINARY_CLOUD_NAME') && getenv('CLOUDINARY_API_KEY') && getenv('CLOUDINARY_API_SECRET');
+    }
+
+    // Build Cloudinary URL for existing images or fallback to local path
+    private function buildRoutineImageUrl(string $value): string {
+        $val = trim($value);
+        if ($val === '') return $val;
+        
+        // If it's already a full URL, return as is
+        if (preg_match('/^https?:\/\//i', $val)) { 
+            return $val; 
+        }
+        
+        // If Cloudinary is configured, build Cloudinary URL
+        if ($this->isCloudinaryConfigured()) {
+            $cloud = getenv('CLOUDINARY_CLOUD_NAME');
+            $folderRoot = getenv('CLOUDINARY_FOLDER') ?: 'athletrack';
+            $file = basename($val);
+            return "https://res.cloudinary.com/{$cloud}/image/upload/" . rtrim($folderRoot, '/') . "/routines/{$file}";
+        }
+        
+        // Fallback to local path if Cloudinary not configured
+        if (strpos($val, 'uploads/routines/') !== false) { 
+            return 'uploads/routines/' . basename($val); 
+        }
+        if (strpos($val, 'routines/') === 0) { 
+            return $val; 
+        }
+        return 'uploads/routines/' . basename($val);
+    }
+
+    // Get Cloudinary configuration from environment variables or use defaults
+    private function getCloudinaryConfig(): array {
+        // Try to get from environment variables first
+        if ($this->isCloudinaryConfigured()) {
+            return [
+                'cloud_name' => getenv('CLOUDINARY_CLOUD_NAME'),
+                'api_key' => getenv('CLOUDINARY_API_KEY'),
+                'api_secret' => getenv('CLOUDINARY_API_SECRET'),
+                'folder' => getenv('CLOUDINARY_FOLDER') ?: 'athletrack'
+            ];
+        }
+        
+        // Fallback to hardcoded values if environment variables not set
+        return [
+            'cloud_name' => 'dtljwbojw',
+            'api_key' => '179567916365545',
+            'api_secret' => 'Ecug-lmZQyU_W03shr4O1PRXSAY',
+            'folder' => 'athletrack'
+        ];
     }
 }
 
