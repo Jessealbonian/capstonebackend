@@ -1363,14 +1363,36 @@ public function getPersonalCustomerCare($id)
 
             $payload = [
                 'id' => (int)$classId,
-                'title' => 'Class ' . (int)$classId, // Simple fallback title
-                'description' => null, // Set to null for now
+                'title' => $row['class_name'] ?? $row['title'] ?? ('Class ' . (int)$classId),
+                'description' => $row['class_description'] ?? ($row['description'] ?? null),
                 'coach_username' => $coach
             ];
 
             return $this->sendPayload($payload, 'success', 'Class info fetched', 200);
         } catch (PDOException $e) {
             return $this->sendPayload(null, 'failed', 'Failed to fetch class info: ' . $e->getMessage(), 500);
+        }
+    }
+
+    // New function: Get coach username by ID from hoa_admins table
+    public function getCoachUsernameById($coachId) {
+        try {
+            if (!$coachId || !is_numeric($coachId)) {
+                return $this->sendPayload(null, 'failed', 'Invalid coach ID provided', 400);
+            }
+
+            $stmt = $this->pdo->prepare("SELECT username FROM hoa_admins WHERE admin_id = :coach_id");
+            $stmt->bindParam(':coach_id', $coachId, PDO::PARAM_INT);
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row && isset($row['username'])) {
+                return $this->sendPayload(['username' => $row['username']], 'success', 'Coach username found', 200);
+            } else {
+                return $this->sendPayload(null, 'failed', 'Coach not found', 404);
+            }
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, 'failed', 'Failed to fetch coach username: ' . $e->getMessage(), 500);
         }
     }
 

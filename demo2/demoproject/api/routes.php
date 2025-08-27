@@ -277,6 +277,15 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 }
                 break;
 
+            case 'getCoachUsername':
+                if (count($request) > 1) {
+                    $coachId = intval($request[1]);
+                    echo json_encode($get->getCoachUsernameById($coachId));
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'Coach ID is required']);
+                }
+                break;
+
             // Fetch all routines for classes a user has redeemed in codegen
             case 'user-class-routines':
                 if (count($request) > 2 && $request[1] === 'id') {
