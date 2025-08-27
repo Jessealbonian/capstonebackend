@@ -2212,9 +2212,14 @@ class Post extends GlobalMethods
                 ];
             }
 
-            // Insert routine completion record using the correct table structure
+            // Use Philippine timezone (UTC+8) for submission time and date
+            $philippineTime = new DateTime('now', new DateTimeZone('UTC'));
+            $philippineTime->modify('+8 hours');
+            $philippineDate = $philippineTime->format('Y-m-d');
+            $philippineTimeStr = $philippineTime->format('Y-m-d H:i:s');
+            
             $insertSql = "INSERT INTO routine_history (class_id, user_id, routine, routine_intensity, time_of_submission, date_of_submission, img) 
-                          VALUES (:class_id, :user_id, :routine, :intensity, NOW(), CURDATE(), :image_path)";
+                          VALUES (:class_id, :user_id, :routine, :intensity, :philippine_time, :philippine_date, :image_path)";
             
             $insertStmt = $this->pdo->prepare($insertSql);
             $result = $insertStmt->execute([
@@ -2222,6 +2227,8 @@ class Post extends GlobalMethods
                 ':user_id' => $userId,
                 ':routine' => $postData['routine'] ?? 'Weekly Routine',
                 ':intensity' => $postData['intensity'] ?? 'Low',
+                ':philippine_time' => $philippineTimeStr,
+                ':philippine_date' => $philippineDate,
                 ':image_path' => $fileName
             ]);
 
