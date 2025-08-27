@@ -231,6 +231,15 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($get->getClasses());
                 break;
 
+            case 'getEnrolledStudentsForClass':
+                $classId = isset($_GET['class_id']) ? intval($_GET['class_id']) : null;
+                if ($classId) {
+                    echo json_encode($get->getEnrolledStudentsForClass($classId));
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'Class ID is required']);
+                }
+                break;
+
             case 'getAllEnrolledClasses':
                 echo json_encode($get->getAllEnrolledClasses());
                 break;

@@ -1468,6 +1468,37 @@ public function getPersonalCustomerCare($id)
         }
     }
 
+    // New function: Get enrolled students for a specific class
+    public function getEnrolledStudentsForClass($classId) {
+        try {
+            if (!$classId || !is_numeric($classId)) {
+                return $this->sendPayload(null, "failed", "Invalid class ID provided", 400);
+            }
+
+            // Get students enrolled in this class from codegen table
+            // Join with hoa_users to get username
+            $sql = "SELECT cg.user_id, cg.codeRedeemed, hu.username as name
+                    FROM codegen cg
+                    INNER JOIN hoa_users hu ON cg.user_id = hu.user_id
+                    WHERE cg.class_id = :class_id 
+                    AND cg.class_id IS NOT NULL
+                    ORDER BY hu.username ASC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $stmt->execute();
+            $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if ($students) {
+                return $this->sendPayload($students, "success", "Successfully retrieved enrolled students for class.", 200);
+            } else {
+                return $this->sendPayload([], "success", "No students enrolled in this class.", 200);
+            }
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, "failed", "Failed to fetch enrolled students: " . $e->getMessage(), 500);
+        }
+    }
+
     public function getRoutineHistory($studentUsername) {
         try {
             $sql = "SELECT rh.id, rh.class_id, rh.user_id, rh.routine, rh.routine_intensity, rh.time_of_submission, rh.date_of_submission, rh.img
