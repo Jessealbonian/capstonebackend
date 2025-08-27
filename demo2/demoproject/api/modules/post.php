@@ -2167,13 +2167,17 @@ class Post extends GlobalMethods
                 ];
             }
 
-            // Handle file upload
+            // Validate image file
             if (!isset($files['image']) || $files['image']['error'] !== UPLOAD_ERR_OK) {
+                error_log("Image file validation failed: " . print_r($files['image'] ?? 'no image', true));
                 return [
                     "status" => "error",
-                    "message" => "Image upload failed"
+                    "message" => "Valid image file is required"
                 ];
             }
+
+            error_log("=== ABOUT TO START CLOUDINARY UPLOAD ===");
+            error_log("Image file details: " . print_r($files['image'], true));
 
             // Cloudinary configuration
             $cloudinaryConfig = $this->getCloudinaryConfig();
