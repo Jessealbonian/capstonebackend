@@ -1349,7 +1349,20 @@ public function getPersonalCustomerCare($id)
             $coachStmt->execute();
             $cgRow = $coachStmt->fetch(PDO::FETCH_ASSOC);
             if ($cgRow && isset($cgRow['Requestedbycoach'])) {
-                $coach = $cgRow['Requestedbycoach'];
+                $coachId = $cgRow['Requestedbycoach'];
+                
+                // Now get the actual coach username from hoa_admins table
+                $adminStmt = $this->pdo->prepare("SELECT username FROM hoa_admins WHERE user_id = :coach_id");
+                $adminStmt->bindParam(':coach_id', $coachId, PDO::PARAM_INT);
+                $adminStmt->execute();
+                $adminRow = $adminStmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($adminRow && isset($adminRow['username'])) {
+                    $coach = $adminRow['username'];
+                } else {
+                    // Fallback to ID if username not found
+                    $coach = 'Coach ID: ' . $coachId;
+                }
             }
 
             $stmt = $this->pdo->prepare("SELECT * FROM class_routines WHERE class_id = :class_id LIMIT 1");
