@@ -2338,7 +2338,21 @@ class Post extends GlobalMethods
 
     // Get Cloudinary configuration from environment variables or use defaults
     private function getCloudinaryConfig(): array {
-        // Try to get from environment variables first
+        // Try to get from CLOUDINARY_URL first (recommended format)
+        $cloudinaryUrl = getenv('CLOUDINARY_URL');
+        if ($cloudinaryUrl) {
+            // Parse the CLOUDINARY_URL to extract credentials
+            if (preg_match('/cloudinary:\/\/([^:]+):([^@]+)@([^\/]+)/', $cloudinaryUrl, $matches)) {
+                return [
+                    'cloud_name' => $matches[3],
+                    'api_key' => $matches[1],
+                    'api_secret' => $matches[2],
+                    'folder' => getenv('CLOUDINARY_FOLDER') ?: 'athletrack'
+                ];
+            }
+        }
+        
+        // Fallback to individual environment variables
         if ($this->isCloudinaryConfigured()) {
             return [
                 'cloud_name' => getenv('CLOUDINARY_CLOUD_NAME'),
@@ -2348,7 +2362,7 @@ class Post extends GlobalMethods
             ];
         }
         
-        // Fallback to hardcoded values if environment variables not set
+        // Final fallback to hardcoded values
         return [
             'cloud_name' => 'dtljwbojw',
             'api_key' => '179567916365545',
