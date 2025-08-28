@@ -1174,11 +1174,25 @@ public function getPersonalCustomerCare($id)
         return $baseUrl . $imagePath;
     }
 
-    public function getClasses() {
+    public function getClasses($adminId = null) {
         try {
+            if ($adminId) {
+                // Filter classes by admin_id using the Requestedbycoach column in codegen table
+                $sql = "SELECT DISTINCT cr.* 
+                        FROM class_routines cr
+                        INNER JOIN codegen cg ON cr.class_id = cg.class_id
+                        WHERE cg.Requestedbycoach = :admin_id
+                        ORDER BY cr.class_id DESC";
+                
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->bindParam(':admin_id', $adminId, PDO::PARAM_INT);
+                $stmt->execute();
+            } else {
+                // If no admin_id provided, return all classes (for backward compatibility)
             $sql = "SELECT * FROM class_routines ORDER BY class_id DESC";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute();
+            }
             
             $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
@@ -1191,6 +1205,47 @@ public function getPersonalCustomerCare($id)
                 "status" => "error",
                 "message" => "Failed to fetch classes: " . $e->getMessage()
             ];
+        }
+    }
+
+    // New function: Get enrolled students for a specific class
+    public function getEnrolledStudentsForClass($classId, $adminId = null) {
+        try {
+            if (!$classId || !is_numeric($classId)) {
+                return $this->sendPayload(null, "failed", "Invalid class ID provided", 400);
+            }
+
+            // Build the SQL query
+            $sql = "SELECT cg.user_id, cg.code, hu.username as name
+                    FROM codegen cg
+                    INNER JOIN hoa_users hu ON cg.user_id = hu.user_id
+                    WHERE cg.class_id = :class_id 
+                    AND cg.class_id IS NOT NULL";
+            
+            $params = [':class_id' => $classId];
+            
+            // If admin_id is provided, ensure the coach can only see students for their own classes
+            if ($adminId) {
+                $sql .= " AND cg.Requestedbycoach = :admin_id";
+                $params[':admin_id'] = $adminId;
+            }
+            
+            $sql .= " ORDER BY hu.username ASC";
+
+            $stmt = $this->pdo->prepare($sql);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_INT);
+            }
+            $stmt->execute();
+            $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if ($students) {
+                return $this->sendPayload($students, "success", "Successfully retrieved enrolled students for class.", 200);
+            } else {
+                return $this->sendPayload([], "success", "No students enrolled in this class.", 200);
+            }
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, "failed", "Failed to fetch enrolled students: " . $e->getMessage(), 500);
         }
     }
 
@@ -1274,7 +1329,7 @@ public function getPersonalCustomerCare($id)
 
             return $this->sendPayload($classes, "success", "Successfully retrieved enrolled classes.", 200);
         } catch (PDOException $e) {
-            return $this->sendPayload(null, "failed", "Failedd to retrieve enrolled classes: " . $e->getMessage(), 500);
+            return $this->sendPayload(null, "failed", "Failed to retrieve enrolled classes: " . $e->getMessage(), 500);
         }
     }
 
@@ -1465,37 +1520,6 @@ public function getPersonalCustomerCare($id)
             return $this->sendPayload($routines, "success", "Successfully retrieved user class routines.", 200);
         } catch (PDOException $e) {
             return $this->sendPayload(null, "failed", "Failed to retrieve user class routines: " . $e->getMessage(), 500);
-        }
-    }
-
-    // New function: Get enrolled students for a specific class
-    public function getEnrolledStudentsForClass($classId) {
-        try {
-            if (!$classId || !is_numeric($classId)) {
-                return $this->sendPayload(null, "failed", "Invalid class ID provided", 400);
-            }
-
-            // Get students enrolled in this class from codegen table
-            // Join with hoa_users to get username
-            $sql = "SELECT cg.user_id, cg.code, hu.username as name
-                    FROM codegen cg
-                    INNER JOIN hoa_users hu ON cg.user_id = hu.user_id
-                    WHERE cg.class_id = :class_id 
-                    AND cg.class_id IS NOT NULL
-                    ORDER BY hu.username ASC";
-
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
-            $stmt->execute();
-            $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            if ($students) {
-                return $this->sendPayload($students, "success", "Successfully retrieved enrolled students for class.", 200);
-            } else {
-                return $this->sendPayload([], "success", "No students enrolled in this class.", 200);
-            }
-        } catch (PDOException $e) {
-            return $this->sendPayload(null, "failed", "Failed to fetch enrolled students: " . $e->getMessage(), 500);
         }
     }
 
