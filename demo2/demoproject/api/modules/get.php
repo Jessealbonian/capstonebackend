@@ -1477,7 +1477,7 @@ public function getPersonalCustomerCare($id)
 
             // Get students enrolled in this class from codegen table
             // Join with hoa_users to get username
-            $sql = "SELECT cg.user_id, cg.codeRedeemed, hu.username as name
+            $sql = "SELECT cg.user_id, cg.code, hu.username as name
                     FROM codegen cg
                     INNER JOIN hoa_users hu ON cg.user_id = hu.user_id
                     WHERE cg.class_id = :class_id 
