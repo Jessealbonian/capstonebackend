@@ -255,6 +255,22 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($get->getClassAttendance($classId, $year, $month, $day));
                 break;
 
+            case 'getTotalStudents':
+                $adminId = isset($_GET['admin_id']) ? intval($_GET['admin_id']) : null;
+                echo json_encode($get->getTotalStudents($adminId));
+                break;
+
+            case 'getDailyStudentActivity':
+                $adminId = isset($_GET['admin_id']) ? intval($_GET['admin_id']) : null;
+                $days = isset($_GET['days']) ? intval($_GET['days']) : 7;
+                echo json_encode($get->getDailyStudentActivity($adminId, $days));
+                break;
+
+            case 'getClassRoutineCompletionStats':
+                $adminId = isset($_GET['admin_id']) ? intval($_GET['admin_id']) : null;
+                echo json_encode($get->getClassRoutineCompletionStats($adminId));
+                break;
+
             // Routines endpoints
             case 'enrolled-classes':
                 if (count($request) > 2 && $request[1] === 'id') {

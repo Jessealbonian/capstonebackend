@@ -1177,13 +1177,14 @@ public function getPersonalCustomerCare($id)
     public function getClasses($adminId = null) {
         try {
             if ($adminId) {
-                // Filter classes by admin_id using the Requestedbycoach column in codegen table
-                $sql = "SELECT DISTINCT cr.* 
+                // Show classes owned by this admin, and also any classes linked via codegen
+                // This ensures newly created classes (which may not yet have codegen rows) are included.
+                $sql = "SELECT DISTINCT cr.*
                         FROM class_routines cr
-                        INNER JOIN codegen cg ON cr.class_id = cg.class_id
-                        WHERE cg.Requestedbycoach = :admin_id
+                        LEFT JOIN codegen cg ON cr.class_id = cg.class_id
+                        WHERE (cr.admin_id = :admin_id OR cg.Requestedbycoach = :admin_id)
                         ORDER BY cr.class_id DESC";
-                
+
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->bindParam(':admin_id', $adminId, PDO::PARAM_INT);
                 $stmt->execute();
@@ -1567,6 +1568,206 @@ public function getPersonalCustomerCare($id)
             );
         } catch (PDOException $e) {
             return $this->sendPayload(null, "failed", "Failed to check today's routine: " . $e->getMessage(), 500);
+        }
+    }
+
+    // Dashboard Stats Functions
+    public function getTotalStudents($adminId = null) {
+        try {
+            $sql = "SELECT COUNT(DISTINCT cg.user_id) as total_students
+                    FROM codegen cg
+                    WHERE cg.class_id IS NOT NULL";
+            
+            $params = [];
+            if ($adminId) {
+                $sql .= " AND cg.Requestedbycoach = :admin_id";
+                $params[':admin_id'] = $adminId;
+            }
+            
+            $stmt = $this->pdo->prepare($sql);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value, PDO::PARAM_INT);
+            }
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            return $this->sendPayload([
+                'total_students' => (int)($result['total_students'] ?? 0)
+            ], "success", "Successfully retrieved total students.", 200);
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, "failed", "Failed to fetch total students: " . $e->getMessage(), 500);
+        }
+    }
+
+    public function getDailyStudentActivity($adminId = null, $days = 7) {
+        try {
+            // Get date range (last N days)
+            $endDate = date('Y-m-d');
+            $startDate = date('Y-m-d', strtotime("-$days days"));
+            
+            $sql = "SELECT DATE(rh.date_of_submission) as date, COUNT(DISTINCT rh.user_id) as active_students
+                    FROM routine_history rh";
+            
+            $params = [];
+            if ($adminId) {
+                // Join with codegen to filter by admin_id
+                $sql .= " INNER JOIN codegen cg ON rh.class_id = cg.class_id AND rh.user_id = cg.user_id
+                         WHERE cg.Requestedbycoach = :admin_id 
+                         AND DATE(rh.date_of_submission) BETWEEN :start_date AND :end_date";
+                $params[':admin_id'] = $adminId;
+                $params[':start_date'] = $startDate;
+                $params[':end_date'] = $endDate;
+            } else {
+                $sql .= " WHERE DATE(rh.date_of_submission) BETWEEN :start_date AND :end_date";
+                $params[':start_date'] = $startDate;
+                $params[':end_date'] = $endDate;
+            }
+            
+            $sql .= " GROUP BY DATE(rh.date_of_submission)
+                     ORDER BY DATE(rh.date_of_submission) ASC";
+            
+            $stmt = $this->pdo->prepare($sql);
+            foreach ($params as $key => $value) {
+                if ($key === ':admin_id') {
+                    $stmt->bindValue($key, $value, PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($key, $value, PDO::PARAM_STR);
+                }
+            }
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Fill in missing dates with 0
+            $activityData = [];
+            $currentDate = new DateTime($startDate);
+            $endDateTime = new DateTime($endDate);
+            $resultMap = [];
+            foreach ($results as $row) {
+                $resultMap[$row['date']] = (int)$row['active_students'];
+            }
+            
+            while ($currentDate <= $endDateTime) {
+                $dateStr = $currentDate->format('Y-m-d');
+                $activityData[] = [
+                    'date' => $dateStr,
+                    'active_students' => $resultMap[$dateStr] ?? 0
+                ];
+                $currentDate->modify('+1 day');
+            }
+            
+            return $this->sendPayload($activityData, "success", "Successfully retrieved daily student activity.", 200);
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, "failed", "Failed to fetch daily activity: " . $e->getMessage(), 500);
+        }
+    }
+
+    public function getClassRoutineCompletionStats($adminId = null) {
+        try {
+            // Get the start of the current week (Monday)
+            $today = new DateTime();
+            $dayOfWeek = (int)$today->format('w'); // 0 (Sunday) to 6 (Saturday)
+            $daysToMonday = $dayOfWeek == 0 ? 6 : $dayOfWeek - 1;
+            $weekStart = clone $today;
+            $weekStart->modify("-$daysToMonday days");
+            $weekStartStr = $weekStart->format('Y-m-d');
+            $weekEndStr = $today->format('Y-m-d');
+            
+            // Get all classes for the admin
+            $classesSql = "SELECT DISTINCT cr.class_id, cr.class_name
+                          FROM class_routines cr";
+            $classesParams = [];
+            
+            if ($adminId) {
+                $classesSql .= " INNER JOIN codegen cg ON cr.class_id = cg.class_id
+                                WHERE cg.Requestedbycoach = :admin_id";
+                $classesParams[':admin_id'] = $adminId;
+            }
+            
+            $classesSql .= " ORDER BY cr.class_id ASC";
+            
+            $classesStmt = $this->pdo->prepare($classesSql);
+            foreach ($classesParams as $key => $value) {
+                $classesStmt->bindValue($key, $value, PDO::PARAM_INT);
+            }
+            $classesStmt->execute();
+            $classes = $classesStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $completionStats = [];
+            
+            foreach ($classes as $class) {
+                $classId = $class['class_id'];
+                
+                // Get total enrolled students for this class
+                $enrolledSql = "SELECT COUNT(DISTINCT cg.user_id) as total_enrolled
+                               FROM codegen cg
+                               WHERE cg.class_id = :class_id";
+                $enrolledParams = [':class_id' => $classId];
+                
+                if ($adminId) {
+                    $enrolledSql .= " AND cg.Requestedbycoach = :admin_id";
+                    $enrolledParams[':admin_id'] = $adminId;
+                }
+                
+                $enrolledStmt = $this->pdo->prepare($enrolledSql);
+                foreach ($enrolledParams as $key => $value) {
+                    $enrolledStmt->bindValue($key, $value, PDO::PARAM_INT);
+                }
+                $enrolledStmt->execute();
+                $enrolledResult = $enrolledStmt->fetch(PDO::FETCH_ASSOC);
+                $totalEnrolled = (int)($enrolledResult['total_enrolled'] ?? 0);
+                
+                // Get completed routines for this week
+                $completedSql = "SELECT COUNT(DISTINCT rh.user_id) as completed_count
+                                FROM routine_history rh
+                                WHERE rh.class_id = :class_id
+                                AND DATE(rh.date_of_submission) BETWEEN :week_start AND :week_end";
+                $completedParams = [
+                    ':class_id' => $classId,
+                    ':week_start' => $weekStartStr,
+                    ':week_end' => $weekEndStr
+                ];
+                
+                if ($adminId) {
+                    $completedSql .= " AND EXISTS (
+                                        SELECT 1 FROM codegen cg 
+                                        WHERE cg.class_id = rh.class_id 
+                                        AND cg.user_id = rh.user_id 
+                                        AND cg.Requestedbycoach = :admin_id
+                                      )";
+                    $completedParams[':admin_id'] = $adminId;
+                }
+                
+                $completedStmt = $this->pdo->prepare($completedSql);
+                foreach ($completedParams as $key => $value) {
+                    if ($key === ':class_id' || $key === ':admin_id') {
+                        $completedStmt->bindValue($key, $value, PDO::PARAM_INT);
+                    } else {
+                        $completedStmt->bindValue($key, $value, PDO::PARAM_STR);
+                    }
+                }
+                $completedStmt->execute();
+                $completedResult = $completedStmt->fetch(PDO::FETCH_ASSOC);
+                $completedCount = (int)($completedResult['completed_count'] ?? 0);
+                
+                // Calculate not completed (students who should have routines but haven't completed)
+                // For simplicity, we'll use total enrolled - completed
+                // But ideally we'd check daily expected routines
+                $notCompletedCount = max(0, $totalEnrolled - $completedCount);
+                
+                $completionStats[] = [
+                    'class_id' => $classId,
+                    'class_name' => $class['class_name'] ?? ('Class ' . $classId),
+                    'total_enrolled' => $totalEnrolled,
+                    'completed' => $completedCount,
+                    'not_completed' => $notCompletedCount,
+                    'week_start' => $weekStartStr,
+                    'week_end' => $weekEndStr
+                ];
+            }
+            
+            return $this->sendPayload($completionStats, "success", "Successfully retrieved routine completion stats.", 200);
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, "failed", "Failed to fetch completion stats: " . $e->getMessage(), 500);
         }
     }
 }
