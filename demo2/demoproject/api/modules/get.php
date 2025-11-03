@@ -1565,6 +1565,27 @@ public function getPersonalCustomerCare($id)
         }
     }
 
+    // New: check today's routine completion by user_id (preferred for accuracy)
+    public function checkTodayRoutineByUserId($classId, $userId) {
+        try {
+            $today = date('Y-m-d');
+            $sql = "SELECT rh.id
+                    FROM routine_history rh
+                    WHERE rh.class_id = :class_id
+                      AND rh.user_id = :user_id
+                      AND DATE(rh.date_of_submission) = :today";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->bindParam(':today', $today, PDO::PARAM_STR);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $this->sendPayload(['completed' => !empty($result)], 'success', "Checked today's routine by user_id.", 200);
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, 'failed', "Failed to check today's routine by user_id: " . $e->getMessage(), 500);
+        }
+    }
+
     // Dashboard Stats Functions
     public function getTotalStudents($adminId = null) {
         try {

@@ -347,6 +347,16 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 }
                 break;
 
+            case 'check-today-by-id':
+                if (count($request) > 2) {
+                    $classId = intval($request[1]);
+                    $userId = intval($request[2]);
+                    echo json_encode($get->checkTodayRoutineByUserId($classId, $userId));
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'Class ID and user ID are required']);
+                }
+                break;
+
             case 'getimages':
                 echo json_encode($get->getImage());
                 break;
