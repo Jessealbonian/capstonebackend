@@ -1177,14 +1177,8 @@ public function getPersonalCustomerCare($id)
     public function getClasses($adminId = null) {
         try {
             if ($adminId) {
-                // Show classes owned by this admin, and also any classes linked via codegen
-                // This ensures newly created classes (which may not yet have codegen rows) are included.
-                $sql = "SELECT DISTINCT cr.*
-                        FROM class_routines cr
-                        LEFT JOIN codegen cg ON cr.class_id = cg.class_id
-                        WHERE (cr.admin_id = :admin_id OR cg.Requestedbycoach = :admin_id)
-                        ORDER BY cr.class_id DESC";
-
+                // Filter by the owning admin directly; no dependency on codegen
+                $sql = "SELECT * FROM class_routines WHERE admin_id = :admin_id ORDER BY class_id DESC";
                 $stmt = $this->pdo->prepare($sql);
                 $stmt->bindParam(':admin_id', $adminId, PDO::PARAM_INT);
                 $stmt->execute();
