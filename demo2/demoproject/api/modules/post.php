@@ -2643,18 +2643,57 @@ class Post extends GlobalMethods
                 return $this->sendPayload(null, "failed", "Student not found in this class", 404);
             }
 
-            // Step 2: Insert into kickhistory table
-            $insertSql = "INSERT INTO kickhistory (class_id, user_id, reason) 
-                          VALUES (:class_id, :user_id, :reason)";
-            
-            $insertStmt = $this->pdo->prepare($insertSql);
-            $insertStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
-            $insertStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
-            $insertStmt->bindParam(':reason', $reason, PDO::PARAM_STR);
-
-            if (!$insertStmt->execute()) {
+            // Verify foreign key constraints before inserting
+            // Check if class_id exists in class_routines
+            $checkClassSql = "SELECT class_id FROM class_routines WHERE class_id = :class_id";
+            $checkClassStmt = $this->pdo->prepare($checkClassSql);
+            $checkClassStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $checkClassStmt->execute();
+            if (!$checkClassStmt->fetch()) {
                 $this->pdo->rollBack();
-                return $this->sendPayload(null, "failed", "Failed to insert into kickhistory", 500);
+                return $this->sendPayload(null, "failed", "Class not found", 404);
+            }
+
+            // Check if user_id exists in hoa_users
+            $checkUserSql = "SELECT user_id FROM hoa_users WHERE user_id = :user_id";
+            $checkUserStmt = $this->pdo->prepare($checkUserSql);
+            $checkUserStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $checkUserStmt->execute();
+            if (!$checkUserStmt->fetch()) {
+                $this->pdo->rollBack();
+                return $this->sendPayload(null, "failed", "User not found", 404);
+            }
+
+            // Step 2: Insert into kickhistory table
+            try {
+                $insertSql = "INSERT INTO kickhistory (class_id, user_id, reason) 
+                              VALUES (:class_id, :user_id, :reason)";
+                
+                $insertStmt = $this->pdo->prepare($insertSql);
+                if (!$insertStmt) {
+                    $this->pdo->rollBack();
+                    $errorInfo = $this->pdo->errorInfo();
+                    error_log("Failed to prepare INSERT statement. Error: " . print_r($errorInfo, true));
+                    return $this->sendPayload(null, "failed", "Failed to prepare INSERT: " . ($errorInfo[2] ?? 'Unknown error'), 500);
+                }
+                
+                $insertStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+                $insertStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+                $insertStmt->bindParam(':reason', $reason, PDO::PARAM_STR);
+
+                if (!$insertStmt->execute()) {
+                    $errorInfo = $insertStmt->errorInfo();
+                    $this->pdo->rollBack();
+                    error_log("Failed to insert into kickhistory. Error: " . print_r($errorInfo, true));
+                    error_log("SQL: " . $insertSql);
+                    error_log("Params: class_id=$classId, user_id=$userId, reason=$reason");
+                    return $this->sendPayload(null, "failed", "Failed to insert into kickhistory: " . ($errorInfo[2] ?? 'Unknown error'), 500);
+                }
+            } catch (PDOException $insertEx) {
+                $this->pdo->rollBack();
+                error_log("PDOException during INSERT: " . $insertEx->getMessage());
+                error_log("PDOException code: " . $insertEx->getCode());
+                return $this->sendPayload(null, "failed", "Insert error: " . $insertEx->getMessage(), 500);
             }
 
             // Step 3: Delete from codegen table
@@ -2667,8 +2706,10 @@ class Post extends GlobalMethods
             $deleteStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
 
             if (!$deleteStmt->execute()) {
+                $errorInfo = $deleteStmt->errorInfo();
                 $this->pdo->rollBack();
-                return $this->sendPayload(null, "failed", "Failed to delete from codegen", 500);
+                error_log("Failed to delete from codegen. Error: " . print_r($errorInfo, true));
+                return $this->sendPayload(null, "failed", "Failed to delete from codegen: " . ($errorInfo[2] ?? 'Unknown error'), 500);
             }
 
             // Commit transaction
@@ -2691,12 +2732,16 @@ class Post extends GlobalMethods
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
-            return $this->sendPayload(null, "failed", "Database error: " . $e->getMessage(), 500);
+            error_log("PDOException in kickStudent: " . $e->getMessage());
+            error_log("PDOException code: " . $e->getCode());
+            error_log("PDOException trace: " . $e->getTraceAsString());
+            return $this->sendPayload(null, "failed", "Database error: " . $e->getMessage() . " (Code: " . $e->getCode() . ")", 500);
         } catch (Exception $e) {
             // Rollback on error
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
+            error_log("Exception in kickStudent: " . $e->getMessage());
             return $this->sendPayload(null, "failed", "Error: " . $e->getMessage(), 500);
         }
     }
