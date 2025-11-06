@@ -279,6 +279,45 @@ class Post extends GlobalMethods
         }
     }
 
+    public function delete_task($data)
+    {
+        try {
+            $taskId = null;
+            if (is_object($data) && isset($data->task_id)) {
+                $taskId = $data->task_id;
+            } elseif (isset($data->task_id)) {
+                $taskId = $data->task_id;
+            }
+
+            if (empty($taskId)) {
+                return [
+                    "status" => "error",
+                    "message" => "Task ID is missing"
+                ];
+            }
+
+            $stmt = $this->pdo->prepare("DELETE FROM task WHERE task_id = :task_id");
+            $stmt->bindParam(':task_id', $taskId, PDO::PARAM_INT);
+
+            if ($stmt->execute()) {
+                return [
+                    "status" => "success",
+                    "message" => "Task deleted successfully"
+                ];
+            } else {
+                return [
+                    "status" => "error",
+                    "message" => "Failed to delete task"
+                ];
+            }
+        } catch (\PDOException $e) {
+            return [
+                "status" => "error",
+                "message" => "Failed to delete task: " . $e->getMessage()
+            ];
+        }
+    }
+
     public function HOA_adminLogin($data)
     {
         $secret_key = "63448c0f19663276ceabdc626d7aab8855872cc7ef5b152d099c41dcbbccd4ce";

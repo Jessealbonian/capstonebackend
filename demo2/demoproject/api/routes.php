@@ -523,6 +523,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($post->update_task($data));
                 break;
 
+            case 'deleteTask':
+                echo json_encode($post->delete_task($data));
+                break;
+
 
                 // case 'delete_task':
                 //     // Return JSON-encoded data for adding employees
