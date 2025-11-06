@@ -272,6 +272,15 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($get->getClassRoutineCompletionStats($adminId));
                 break;
 
+            case 'getKickNotifications':
+                $userId = isset($_GET['user_id']) ? intval($_GET['user_id']) : null;
+                if ($userId) {
+                    echo json_encode($get->getKickNotificationsByUser($userId));
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'User ID is required']);
+                }
+                break;
+
             // Routines endpoints
             case 'enrolled-classes':
                 if (count($request) > 2 && $request[1] === 'id') {

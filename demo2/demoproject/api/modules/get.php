@@ -1785,4 +1785,29 @@ public function getPersonalCustomerCare($id)
             return $this->sendPayload(null, "failed", "Failed to fetch completion stats: " . $e->getMessage(), 500);
         }
     }
+
+    // Get kick notifications for a specific user
+    public function getKickNotificationsByUser($userId) {
+        try {
+            if (!$userId || !is_numeric($userId)) {
+                return $this->sendPayload([], "failed", "Invalid user ID provided", 400);
+            }
+
+            $sql = "SELECT kh.idkickhistory, kh.class_id, kh.user_id, kh.reason, cr.class_name
+                    FROM kickhistory kh
+                    INNER JOIN class_routines cr ON cr.class_id = kh.class_id
+                    WHERE kh.user_id = :user_id
+                    ORDER BY kh.idkickhistory DESC
+                    LIMIT 10";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return $this->sendPayload($rows, "success", "Kick notifications retrieved successfully.", 200);
+        } catch (PDOException $e) {
+            return $this->sendPayload([], "failed", "Failed to fetch kick notifications: " . $e->getMessage(), 500);
+        }
+    }
 }
