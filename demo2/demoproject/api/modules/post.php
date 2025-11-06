@@ -1894,6 +1894,64 @@ class Post extends GlobalMethods
         }
     }
 
+    public function deleteClass($data) {
+        try {
+            if (!isset($data->class_id)) {
+                return [
+                    "status" => "error",
+                    "message" => "Class ID is required"
+                ];
+            }
+
+            $classId = intval($data->class_id);
+
+            // Start transaction to ensure data integrity
+            $this->pdo->beginTransaction();
+
+            // Delete related records first (due to foreign key constraints)
+            // Delete from kickhistory
+            $deleteKickHistorySql = "DELETE FROM kickhistory WHERE class_id = :class_id";
+            $deleteKickHistoryStmt = $this->pdo->prepare($deleteKickHistorySql);
+            $deleteKickHistoryStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $deleteKickHistoryStmt->execute();
+
+            // Delete from routine_history
+            $deleteRoutineHistorySql = "DELETE FROM routine_history WHERE class_id = :class_id";
+            $deleteRoutineHistoryStmt = $this->pdo->prepare($deleteRoutineHistorySql);
+            $deleteRoutineHistoryStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $deleteRoutineHistoryStmt->execute();
+
+            // Delete from codegen
+            $deleteCodegenSql = "DELETE FROM codegen WHERE class_id = :class_id";
+            $deleteCodegenStmt = $this->pdo->prepare($deleteCodegenSql);
+            $deleteCodegenStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $deleteCodegenStmt->execute();
+
+            // Finally, delete the class itself
+            $deleteClassSql = "DELETE FROM class_routines WHERE class_id = :class_id";
+            $deleteClassStmt = $this->pdo->prepare($deleteClassSql);
+            $deleteClassStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $deleteClassStmt->execute();
+
+            // Commit transaction
+            $this->pdo->commit();
+
+            return [
+                "status" => "success",
+                "message" => "Class deleted successfully"
+            ];
+        } catch (PDOException $e) {
+            // Rollback on error
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            return [
+                "status" => "error",
+                "message" => "Failed to delete class: " . $e->getMessage()
+            ];
+        }
+    }
+
     public function generateTokens($data) {
         try {
             if (!isset($data->count) || !isset($data->class_id) || !isset($data->admin_id)) {

@@ -775,6 +775,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($post->editClass($data));
                 break;
 
+            case 'deleteClass':
+                echo json_encode($post->deleteClass($data));
+                break;
+
             case 'kickStudent':
                 echo json_encode($post->kickStudent($data));
                 break;
