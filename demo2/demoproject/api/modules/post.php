@@ -2599,6 +2599,107 @@ class Post extends GlobalMethods
             ];
         }
     }
+
+    /**
+     * Kick a student from a class
+     * Steps:
+     * 1. Fetch codegen data by user_id and class_id
+     * 2. Insert into kickhistory (class_id, user_id, reason)
+     * 3. Delete from codegen where user_id and class_id match
+     */
+    public function kickStudent($data) {
+        try {
+            // Validate required fields
+            if (!isset($data->class_id) || !isset($data->user_id) || !isset($data->reason)) {
+                return $this->sendPayload(null, "failed", "Missing required fields: class_id, user_id, and reason are required", 400);
+            }
+
+            $classId = intval($data->class_id);
+            $userId = intval($data->user_id);
+            $reason = trim($data->reason);
+
+            if (empty($reason)) {
+                return $this->sendPayload(null, "failed", "Reason cannot be empty", 400);
+            }
+
+            // Start transaction
+            $this->pdo->beginTransaction();
+
+            // Step 1: Fetch codegen data to verify the student is enrolled
+            $fetchSql = "SELECT code_id, class_id, user_id, code 
+                         FROM codegen 
+                         WHERE class_id = :class_id 
+                         AND user_id = :user_id 
+                         AND user_id IS NOT NULL";
+            
+            $fetchStmt = $this->pdo->prepare($fetchSql);
+            $fetchStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $fetchStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $fetchStmt->execute();
+            $codegenData = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$codegenData) {
+                $this->pdo->rollBack();
+                return $this->sendPayload(null, "failed", "Student not found in this class", 404);
+            }
+
+            // Step 2: Insert into kickhistory table
+            $insertSql = "INSERT INTO kickhistory (class_id, user_id, reason) 
+                          VALUES (:class_id, :user_id, :reason)";
+            
+            $insertStmt = $this->pdo->prepare($insertSql);
+            $insertStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $insertStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $insertStmt->bindParam(':reason', $reason, PDO::PARAM_STR);
+
+            if (!$insertStmt->execute()) {
+                $this->pdo->rollBack();
+                return $this->sendPayload(null, "failed", "Failed to insert into kickhistory", 500);
+            }
+
+            // Step 3: Delete from codegen table
+            $deleteSql = "DELETE FROM codegen 
+                          WHERE class_id = :class_id 
+                          AND user_id = :user_id";
+            
+            $deleteStmt = $this->pdo->prepare($deleteSql);
+            $deleteStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $deleteStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+
+            if (!$deleteStmt->execute()) {
+                $this->pdo->rollBack();
+                return $this->sendPayload(null, "failed", "Failed to delete from codegen", 500);
+            }
+
+            // Commit transaction
+            $this->pdo->commit();
+
+            return $this->sendPayload(
+                [
+                    'class_id' => $classId,
+                    'user_id' => $userId,
+                    'reason' => $reason,
+                    'code' => $codegenData['code']
+                ],
+                "success",
+                "Student successfully kicked from class",
+                200
+            );
+
+        } catch (PDOException $e) {
+            // Rollback on error
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            return $this->sendPayload(null, "failed", "Database error: " . $e->getMessage(), 500);
+        } catch (Exception $e) {
+            // Rollback on error
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            return $this->sendPayload(null, "failed", "Error: " . $e->getMessage(), 500);
+        }
+    }
 }
 
 // Handle OPTIONS request for CORS

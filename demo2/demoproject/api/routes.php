@@ -762,6 +762,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($post->editClass($data));
                 break;
 
+            case 'kickStudent':
+                echo json_encode($post->kickStudent($data));
+                break;
+
             default:
                 // Return a 403 response for unsupported requests
                 echo "This is forbidden";
