@@ -1176,21 +1176,22 @@ public function getPersonalCustomerCare($id)
 
     public function getClasses($adminId = null) {
         try {
+            // Auto-archive expired classes
+            $archiveSql = "UPDATE class_routines SET archived=1 WHERE expiration_date IS NOT NULL AND expiration_date < NOW() AND archived=0";
+            $this->pdo->exec($archiveSql);
+
+            $showArchived = isset($_GET['show_archived']) && $_GET['show_archived'] == '1';
             if ($adminId) {
-                // Filter by the owning admin directly; no dependency on codegen
-                $sql = "SELECT * FROM class_routines WHERE admin_id = :admin_id ORDER BY class_id DESC";
-                $stmt = $this->pdo->prepare($sql);
-                $stmt->bindParam(':admin_id', $adminId, PDO::PARAM_INT);
-                $stmt->execute();
-            } else {
-                // If no admin_id provided, return all classes (for backward compatibility)
-            $sql = "SELECT * FROM class_routines ORDER BY class_id DESC";
+                $sql = "SELECT * FROM class_routines WHERE admin_id = :admin_id" . ($showArchived ? '' : " AND archived = 0") . " ORDER BY class_id DESC";
             $stmt = $this->pdo->prepare($sql);
+                $stmt->bindParam(':admin_id', $adminId, PDO::PARAM_INT);
             $stmt->execute();
+            } else {
+                $sql = "SELECT * FROM class_routines" . ($showArchived ? '' : " WHERE archived = 0") . " ORDER BY class_id DESC";
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute();
             }
-            
             $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
             return [
                 "status" => "success",
                 "data" => $classes
@@ -1210,30 +1211,31 @@ public function getPersonalCustomerCare($id)
                 return $this->sendPayload(null, "failed", "Invalid class ID provided", 400);
             }
 
-            // Build the SQL query
-            $sql = "SELECT cg.user_id, cg.code, hu.username as name
+            $showDeactivated = isset($_GET['show_deactivated']) && $_GET['show_deactivated'] == '1';
+            // Now includes student_status
+            $sql = "SELECT cg.user_id, cg.code, hu.username as name, cg.student_status
                     FROM codegen cg
                     INNER JOIN hoa_users hu ON cg.user_id = hu.user_id
                     WHERE cg.class_id = :class_id 
                     AND cg.class_id IS NOT NULL";
-            
+
+            if (!$showDeactivated) {
+                $sql .= " AND cg.student_status = 'active'";
+            }
             $params = [':class_id' => $classId];
-            
-            // If admin_id is provided, ensure the coach can only see students for their own classes
+
             if ($adminId) {
                 $sql .= " AND cg.Requestedbycoach = :admin_id";
                 $params[':admin_id'] = $adminId;
             }
-            
-            $sql .= " ORDER BY hu.username ASC";
 
+            $sql .= " ORDER BY hu.username ASC";
             $stmt = $this->pdo->prepare($sql);
             foreach ($params as $key => $value) {
                 $stmt->bindValue($key, $value, PDO::PARAM_INT);
             }
             $stmt->execute();
             $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
             if ($students) {
                 return $this->sendPayload($students, "success", "Successfully retrieved enrolled students for class.", 200);
             } else {
@@ -1809,5 +1811,16 @@ public function getPersonalCustomerCare($id)
         } catch (PDOException $e) {
             return $this->sendPayload([], "failed", "Failed to fetch kick notifications: " . $e->getMessage(), 500);
         }
+    }
+
+    function getLandingVisits($pdo, $update = false, $ipAddress = null) {
+        // Increment visit count if requested
+        if ($update) {
+            $stmt = $pdo->prepare("UPDATE landing_visits SET visit_count = visit_count + 1, last_visited = CURRENT_TIMESTAMP, ip_address = :ip WHERE id = 1");
+            $stmt->execute(['ip' => $ipAddress]);
+        }
+        // Get the current count
+        $stmt = $pdo->query("SELECT visit_count, last_visited FROM landing_visits WHERE id = 1");
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 }

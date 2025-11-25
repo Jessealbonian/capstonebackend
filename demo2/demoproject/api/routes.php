@@ -503,6 +503,14 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($get->getCommunityStats());
                 break;
 
+            case 'landing-visits':
+                $update = isset($_GET['increment']) && $_GET['increment'] === '1';
+                $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+                $result = $get->getLandingVisits($pdo, $update, $ip);
+                echo json_encode(["visit_count" => (int)($result['visit_count'] ?? 0), "last_visited" => $result['last_visited'] ?? null]);
+                exit;
+                break;
+
 
             default:
                 // Return a 403 response for unsupported requests
@@ -515,6 +523,11 @@ switch ($_SERVER['REQUEST_METHOD']) {
     case 'POST':
         // Retrieves JSON-decoded data from php://input using file_get_contents
         $data = json_decode(file_get_contents("php://input"));
+        if ($request[0] === 'set-student-status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+  $payload = json_decode(file_get_contents('php://input'));
+  $result = $post->setStudentStatus($payload);
+  echo json_encode($result); exit;
+}
         switch ($request[0]) {
             case 'addTask':
                 echo json_encode($post->add_task($data));

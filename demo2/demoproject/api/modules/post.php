@@ -1767,41 +1767,15 @@ class Post extends GlobalMethods
 
             // Prepare the SQL statement
             $sql = "INSERT INTO class_routines (
-                class_name,
-                description,
-                admin_id,
-                mondayRoutine,
-                tuesdayRoutine,
-                wednesdayRoutine,
-                thursdayRoutine,
-                fridayRoutine,
-                saturdayRoutine,
-                sundayRoutine,
-                mondayintensity,
-                tuesdayintensity,
-                wednesdayintensity,
-                thursdayintensity,
-                fridayintensity,
-                saturdayintensity,
-                sundayintensity
+                class_name, description, admin_id,
+                mondayRoutine, tuesdayRoutine, wednesdayRoutine, thursdayRoutine, fridayRoutine, saturdayRoutine, sundayRoutine,
+                mondayintensity, tuesdayintensity, wednesdayintensity, thursdayintensity, fridayintensity, saturdayintensity, sundayintensity,
+                expiration_date
             ) VALUES (
-                :class_name,
-                :description,
-                :admin_id,
-                :mondayRoutine,
-                :tuesdayRoutine,
-                :wednesdayRoutine,
-                :thursdayRoutine,
-                :fridayRoutine,
-                :saturdayRoutine,
-                :sundayRoutine,
-                :mondayintensity,
-                :tuesdayintensity,
-                :wednesdayintensity,
-                :thursdayintensity,
-                :fridayintensity,
-                :saturdayintensity,
-                :sundayintensity
+                :class_name, :description, :admin_id,
+                :mondayRoutine, :tuesdayRoutine, :wednesdayRoutine, :thursdayRoutine, :fridayRoutine, :saturdayRoutine, :sundayRoutine,
+                :mondayintensity, :tuesdayintensity, :wednesdayintensity, :thursdayintensity, :fridayintensity, :saturdayintensity, :sundayintensity,
+                :expiration_date
             )";
 
             // Prepare and execute the statement
@@ -1823,7 +1797,8 @@ class Post extends GlobalMethods
                 ':thursdayintensity' => $data->thursdayintensity ?? '',
                 ':fridayintensity' => $data->fridayintensity ?? '',
                 ':saturdayintensity' => $data->saturdayintensity ?? '',
-                ':sundayintensity' => $data->sundayintensity ?? ''
+                ':sundayintensity' => $data->sundayintensity ?? '',
+                ':expiration_date' => ($data->expiration_date ?? null)
             ]);
 
             return [
@@ -2841,6 +2816,27 @@ class Post extends GlobalMethods
             error_log("Exception in kickStudent: " . $e->getMessage());
             return $this->sendPayload(null, "failed", "Error: " . $e->getMessage(), 500);
         }
+    }
+
+    public function setStudentStatus($data) {
+        if (!isset($data->class_id, $data->user_id, $data->status)) {
+            return ["status" => "error", "message" => "Missing parameters."];
+        }
+        $status = strtolower(trim($data->status));
+        if (!in_array($status, ['active','deactivated'])) {
+            return ["status" => "error", "message" => "Invalid status."];
+        }
+        $sql = "UPDATE codegen SET student_status=:status WHERE class_id=:class_id AND user_id=:user_id";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            ':status' => $status,
+            ':class_id' => $data->class_id,
+            ':user_id' => $data->user_id
+        ]);
+        if ($stmt->rowCount()) {
+            return ["status" => "success", "message" => "Student status updated."];
+        }
+        return ["status" => "error", "message" => "Update failed or no change."];
     }
 }
 
