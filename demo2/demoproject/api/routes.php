@@ -507,7 +507,15 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 $update = isset($_GET['increment']) && $_GET['increment'] === '1';
                 $ip = $_SERVER['REMOTE_ADDR'] ?? null;
                 $result = $get->getLandingVisits($pdo, $update, $ip);
-                echo json_encode(["visit_count" => (int)($result['visit_count'] ?? 0), "last_visited" => $result['last_visited'] ?? null]);
+                error_log('LANDING_VISITS DEBUG: ' . print_r($result, true));
+                // Robust extraction:
+                $data = $result;
+                if (isset($result['payload'])) {
+                    $data = $result['payload'];
+                }
+                $vc = isset($data['visit_count']) ? (int)$data['visit_count'] : 0;
+                $lv = $data['last_visited'] ?? null;
+                echo json_encode(["visit_count" => $vc, "last_visited" => $lv]);
                 exit;
                 break;
 
