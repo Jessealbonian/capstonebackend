@@ -1814,13 +1814,38 @@ public function getPersonalCustomerCare($id)
     }
 
     function getLandingVisits($pdo, $update = false, $ipAddress = null) {
-        // Increment visit count if requested
-        if ($update) {
-            $stmt = $pdo->prepare("UPDATE landing_visits SET visit_count = visit_count + 1, last_visited = CURRENT_TIMESTAMP, ip_address = :ip WHERE id = 1");
-            $stmt->execute(['ip' => $ipAddress]);
+        try {
+            // Ensure the row exists first
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) as count FROM landing_visits WHERE id = 1");
+            $checkStmt->execute();
+            $rowExists = $checkStmt->fetch(PDO::FETCH_ASSOC)['count'] > 0;
+            
+            if (!$rowExists) {
+                // Insert initial row if it doesn't exist
+                $initStmt = $pdo->prepare("INSERT INTO landing_visits (id, visit_count, last_visited, ip_address) VALUES (1, 0, NOW(), :ip)");
+                $initStmt->execute(['ip' => $ipAddress]);
+            }
+            
+            // Increment visit count if requested
+            if ($update) {
+                $stmt = $pdo->prepare("UPDATE landing_visits SET visit_count = visit_count + 1, last_visited = CURRENT_TIMESTAMP, ip_address = :ip WHERE id = 1");
+                $stmt->execute(['ip' => $ipAddress]);
+            }
+            
+            // Get the current count
+            $stmt = $pdo->prepare("SELECT visit_count, last_visited FROM landing_visits WHERE id = 1");
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Return default values if no result
+            if (!$result) {
+                return ['visit_count' => 0, 'last_visited' => null];
+            }
+            
+            return $result;
+        } catch (PDOException $e) {
+            error_log("Error in getLandingVisits: " . $e->getMessage());
+            return ['visit_count' => 0, 'last_visited' => null];
         }
-        // Get the current count
-        $stmt = $pdo->query("SELECT visit_count, last_visited FROM landing_visits WHERE id = 1");
-        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 }

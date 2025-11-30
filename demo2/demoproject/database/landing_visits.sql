@@ -6,4 +6,6 @@ CREATE TABLE IF NOT EXISTS landing_visits (
 );
 
 -- Insert initial visits row if not exists
-INSERT INTO landing_visits (visit_count) SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM landing_visits WHERE id = 1);
+INSERT INTO landing_visits (id, visit_count, last_visited) 
+VALUES (1, 0, NOW())
+ON DUPLICATE KEY UPDATE id=id;
