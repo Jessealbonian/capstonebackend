@@ -2838,6 +2838,22 @@ class Post extends GlobalMethods
         }
         return ["status" => "error", "message" => "Update failed or no change."];
     }
+
+    public function incrementLandingVisits() {
+        try {
+            $sql = "UPDATE landing_visits SET visit_count = visit_count + 1, last_visited = CURRENT_TIMESTAMP WHERE id = 1";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute();
+            // Now fetch the updated value
+            $fetchStmt = $this->pdo->prepare("SELECT visit_count, last_visited FROM landing_visits WHERE id = 1");
+            $fetchStmt->execute();
+            $row = $fetchStmt->fetch(PDO::FETCH_ASSOC) ?: ["visit_count" => 0, "last_visited" => null];
+            return $row;
+        } catch (PDOException $e) {
+            error_log("Error incrementing landing visits: " . $e->getMessage());
+            return [ 'visit_count' => 0, 'last_visited' => null, 'error' => $e->getMessage() ];
+        }
+    }
 }
 
 // Handle OPTIONS request for CORS

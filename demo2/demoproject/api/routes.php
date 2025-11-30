@@ -504,11 +504,17 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
 
             case 'landing-visits':
+                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                    $result = $post->incrementLandingVisits();
+                    echo json_encode($result);
+                    exit;
+                }
+
+                // Still support GET as readonly fetch
                 $update = isset($_GET['increment']) && $_GET['increment'] === '1';
                 $ip = $_SERVER['REMOTE_ADDR'] ?? null;
                 $result = $get->getLandingVisits($pdo, $update, $ip);
                 error_log('LANDING_VISITS DEBUG: ' . print_r($result, true));
-                // Robust extraction:
                 $data = $result;
                 if (isset($result['payload'])) {
                     $data = $result['payload'];
