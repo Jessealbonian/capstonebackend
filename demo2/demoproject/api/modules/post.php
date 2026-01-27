@@ -2839,6 +2839,142 @@ class Post extends GlobalMethods
         return ["status" => "error", "message" => "Update failed or no change."];
     }
 
+    public function deactivateStudent($data) {
+        try {
+            // Validate required fields
+            if (!isset($data->code_id) || !isset($data->reason)) {
+                return $this->sendPayload(null, "failed", "Missing required fields: code_id and reason are required", 400);
+            }
+
+            $codeId = intval($data->code_id);
+            $reason = trim($data->reason);
+
+            if (empty($reason)) {
+                return $this->sendPayload(null, "failed", "Reason cannot be empty", 400);
+            }
+
+            // Start transaction
+            $this->pdo->beginTransaction();
+
+            // Step 1: Fetch codegen data to verify the code exists
+            $fetchSql = "SELECT code_id, class_id, user_id, code, student_status
+                         FROM codegen 
+                         WHERE code_id = :code_id";
+            
+            $fetchStmt = $this->pdo->prepare($fetchSql);
+            $fetchStmt->bindParam(':code_id', $codeId, PDO::PARAM_INT);
+            $fetchStmt->execute();
+            $codegenData = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$codegenData) {
+                $this->pdo->rollBack();
+                return $this->sendPayload(null, "failed", "Code not found", 404);
+            }
+
+            // Check if already deactivated
+            if ($codegenData['student_status'] === 'deactivated') {
+                $this->pdo->rollBack();
+                return $this->sendPayload(null, "failed", "Student is already deactivated", 400);
+            }
+
+            $classId = intval($codegenData['class_id']);
+            $userId = intval($codegenData['user_id']);
+
+            // Verify foreign key constraints
+            // Check if class_id exists in class_routines
+            $checkClassSql = "SELECT class_id FROM class_routines WHERE class_id = :class_id";
+            $checkClassStmt = $this->pdo->prepare($checkClassSql);
+            $checkClassStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $checkClassStmt->execute();
+            if (!$checkClassStmt->fetch()) {
+                $this->pdo->rollBack();
+                return $this->sendPayload(null, "failed", "Class not found", 404);
+            }
+
+            // Check if user_id exists in hoa_users
+            if ($userId > 0) {
+                $checkUserSql = "SELECT user_id FROM hoa_users WHERE user_id = :user_id";
+                $checkUserStmt = $this->pdo->prepare($checkUserSql);
+                $checkUserStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+                $checkUserStmt->execute();
+                if (!$checkUserStmt->fetch()) {
+                    $this->pdo->rollBack();
+                    return $this->sendPayload(null, "failed", "User not found", 404);
+                }
+            }
+
+            // Step 2: Insert into kickhistory table
+            try {
+                $insertSql = "INSERT INTO kickhistory (class_id, user_id, reason) 
+                              VALUES (:class_id, :user_id, :reason)";
+                
+                $insertStmt = $this->pdo->prepare($insertSql);
+                if (!$insertStmt) {
+                    $this->pdo->rollBack();
+                    $errorInfo = $this->pdo->errorInfo();
+                    error_log("Failed to prepare INSERT statement. Error: " . print_r($errorInfo, true));
+                    return $this->sendPayload(null, "failed", "Failed to prepare INSERT: " . ($errorInfo[2] ?? 'Unknown error'), 500);
+                }
+                
+                $insertStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+                $insertStmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+                $insertStmt->bindParam(':reason', $reason, PDO::PARAM_STR);
+
+                if (!$insertStmt->execute()) {
+                    $errorInfo = $insertStmt->errorInfo();
+                    $this->pdo->rollBack();
+                    error_log("Failed to insert into kickhistory. Error: " . print_r($errorInfo, true));
+                    error_log("SQL: " . $insertSql);
+                    error_log("Params: class_id=$classId, user_id=$userId, reason=$reason");
+                    return $this->sendPayload(null, "failed", "Failed to insert into kickhistory: " . ($errorInfo[2] ?? 'Unknown error'), 500);
+                }
+            } catch (PDOException $insertEx) {
+                $this->pdo->rollBack();
+                error_log("PDOException during INSERT: " . $insertEx->getMessage());
+                error_log("PDOException code: " . $insertEx->getCode());
+                return $this->sendPayload(null, "failed", "Insert error: " . $insertEx->getMessage(), 500);
+            }
+
+            // Step 3: Update codegen table to set student_status to 'deactivated'
+            $updateSql = "UPDATE codegen 
+                          SET student_status = 'deactivated'
+                          WHERE code_id = :code_id";
+            
+            $updateStmt = $this->pdo->prepare($updateSql);
+            $updateStmt->bindParam(':code_id', $codeId, PDO::PARAM_INT);
+
+            if (!$updateStmt->execute()) {
+                $errorInfo = $updateStmt->errorInfo();
+                $this->pdo->rollBack();
+                error_log("Failed to update codegen. Error: " . print_r($errorInfo, true));
+                return $this->sendPayload(null, "failed", "Failed to update student status: " . ($errorInfo[2] ?? 'Unknown error'), 500);
+            }
+
+            // Commit transaction
+            $this->pdo->commit();
+
+            return $this->sendPayload(
+                [
+                    'code_id' => $codeId,
+                    'class_id' => $classId,
+                    'user_id' => $userId,
+                    'reason' => $reason,
+                    'code' => $codegenData['code'],
+                    'new_status' => 'deactivated'
+                ],
+                "success",
+                "Student successfully deactivated from class",
+                200
+            );
+        } catch (PDOException $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            error_log("PDOException in deactivateStudent: " . $e->getMessage());
+            return $this->sendPayload(null, "failed", "Database error: " . $e->getMessage(), 500);
+        }
+    }
+
     public function incrementLandingVisits() {
         try {
             $sql = "UPDATE landing_visits SET visit_count = visit_count + 1, last_visited = CURRENT_TIMESTAMP WHERE id = 1";

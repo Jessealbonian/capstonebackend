@@ -802,6 +802,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($post->kickStudent($data));
                 break;
 
+            case 'deactivateStudent':
+                echo json_encode($post->deactivateStudent($data));
+                break;
+
             case 'landing-visits':
                 $result = $post->incrementLandingVisits();
                 echo json_encode($result);

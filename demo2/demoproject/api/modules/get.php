@@ -1212,8 +1212,8 @@ public function getPersonalCustomerCare($id)
             }
 
             $showDeactivated = isset($_GET['show_deactivated']) && $_GET['show_deactivated'] == '1';
-            // Now includes student_status
-            $sql = "SELECT cg.user_id, cg.code, hu.username as name, cg.student_status
+            // Now includes student_status and code_id for deactivation
+            $sql = "SELECT cg.code_id, cg.user_id, cg.code, hu.username as name, cg.student_status
                     FROM codegen cg
                     INNER JOIN hoa_users hu ON cg.user_id = hu.user_id
                     WHERE cg.class_id = :class_id 
