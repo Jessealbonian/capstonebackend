@@ -1212,8 +1212,28 @@ public function getPersonalCustomerCare($id)
             }
 
             $showDeactivated = isset($_GET['show_deactivated']) && $_GET['show_deactivated'] == '1';
+            
+            // Get the start of the current week (Monday) and the end (today)
+            $today = new DateTime();
+            $dayOfWeek = (int)$today->format('w'); // 0 (Sunday) to 6 (Saturday)
+            $daysToMonday = $dayOfWeek == 0 ? 6 : $dayOfWeek - 1;
+            $weekStart = clone $today;
+            $weekStart->modify("-$daysToMonday days");
+            $weekStartStr = $weekStart->format('Y-m-d');
+            $weekEndStr = $today->format('Y-m-d');
+
             // Now includes student_status and code_id for deactivation
-            $sql = "SELECT cg.code_id, cg.user_id, cg.code, hu.username as name, cg.student_status
+            $sql = "SELECT cg.code_id, cg.user_id, cg.code, hu.username as name, cg.student_status,
+                            CASE
+                              WHEN EXISTS (
+                                SELECT 1
+                                FROM routine_history rh
+                                WHERE rh.class_id = cg.class_id
+                                  AND rh.user_id = cg.user_id
+                                  AND DATE(rh.date_of_submission) BETWEEN :week_start AND :week_end
+                              )
+                              THEN 1 ELSE 0
+                            END as completed_this_week
                     FROM codegen cg
                     INNER JOIN hoa_users hu ON cg.user_id = hu.user_id
                     WHERE cg.class_id = :class_id 
@@ -1222,7 +1242,11 @@ public function getPersonalCustomerCare($id)
             if (!$showDeactivated) {
                 $sql .= " AND cg.student_status = 'active'";
             }
-            $params = [':class_id' => $classId];
+            $params = [
+                ':class_id' => $classId,
+                ':week_start' => $weekStartStr,
+                ':week_end' => $weekEndStr
+            ];
 
             if ($adminId) {
                 $sql .= " AND cg.Requestedbycoach = :admin_id";
@@ -1232,7 +1256,8 @@ public function getPersonalCustomerCare($id)
             $sql .= " ORDER BY hu.username ASC";
             $stmt = $this->pdo->prepare($sql);
             foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value, PDO::PARAM_INT);
+                $bindType = ($key === ':week_start' || $key === ':week_end') ? PDO::PARAM_STR : PDO::PARAM_INT;
+                $stmt->bindValue($key, $value, $bindType);
             }
             $stmt->execute();
             $students = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -1765,6 +1765,16 @@ class Post extends GlobalMethods
                 ];
             }
 
+            // Normalize intensity values so "medium" and "Average" are stored consistently
+            $normalizeIntensity = function ($val) {
+                $v = strtolower(trim((string)$val));
+                if ($v === '' || $v === 'null') return '';
+                if ($v === 'medium' || $v === 'average' || $v === 'avg') return 'Average';
+                if ($v === 'easy') return 'Easy';
+                if ($v === 'hard') return 'Hard';
+                return (string)$val;
+            };
+
             // Prepare the SQL statement
             $sql = "INSERT INTO class_routines (
                 class_name, description, admin_id,
@@ -1791,13 +1801,13 @@ class Post extends GlobalMethods
                 ':fridayRoutine' => $data->fridayRoutine ?? '',
                 ':saturdayRoutine' => $data->saturdayRoutine ?? '',
                 ':sundayRoutine' => $data->sundayRoutine ?? '',
-                ':mondayintensity' => $data->mondayintensity ?? '',
-                ':tuesdayintensity' => $data->tuesdayintensity ?? '',
-                ':wednesdayintensity' => $data->wednesdayintensity ?? '',
-                ':thursdayintensity' => $data->thursdayintensity ?? '',
-                ':fridayintensity' => $data->fridayintensity ?? '',
-                ':saturdayintensity' => $data->saturdayintensity ?? '',
-                ':sundayintensity' => $data->sundayintensity ?? '',
+                ':mondayintensity' => $normalizeIntensity($data->mondayintensity ?? ''),
+                ':tuesdayintensity' => $normalizeIntensity($data->tuesdayintensity ?? ''),
+                ':wednesdayintensity' => $normalizeIntensity($data->wednesdayintensity ?? ''),
+                ':thursdayintensity' => $normalizeIntensity($data->thursdayintensity ?? ''),
+                ':fridayintensity' => $normalizeIntensity($data->fridayintensity ?? ''),
+                ':saturdayintensity' => $normalizeIntensity($data->saturdayintensity ?? ''),
+                ':sundayintensity' => $normalizeIntensity($data->sundayintensity ?? ''),
                 ':expiration_date' => ($data->expiration_date ?? null)
             ]);
 
@@ -1823,6 +1833,16 @@ class Post extends GlobalMethods
                     "message" => "Class ID is required"
                 ];
             }
+
+            // Normalize intensity values so "medium" and "Average" are stored consistently
+            $normalizeIntensity = function ($val) {
+                $v = strtolower(trim((string)$val));
+                if ($v === '' || $v === 'null') return '';
+                if ($v === 'medium' || $v === 'average' || $v === 'avg') return 'Average';
+                if ($v === 'easy') return 'Easy';
+                if ($v === 'hard') return 'Hard';
+                return (string)$val;
+            };
             $sql = "UPDATE class_routines SET
                 mondayRoutine = :mondayRoutine,
                 tuesdayRoutine = :tuesdayRoutine,
@@ -1848,13 +1868,13 @@ class Post extends GlobalMethods
                 ':fridayRoutine' => $data->fridayRoutine ?? '',
                 ':saturdayRoutine' => $data->saturdayRoutine ?? '',
                 ':sundayRoutine' => $data->sundayRoutine ?? '',
-                ':mondayintensity' => $data->mondayintensity ?? '',
-                ':tuesdayintensity' => $data->tuesdayintensity ?? '',
-                ':wednesdayintensity' => $data->wednesdayintensity ?? '',
-                ':thursdayintensity' => $data->thursdayintensity ?? '',
-                ':fridayintensity' => $data->fridayintensity ?? '',
-                ':saturdayintensity' => $data->saturdayintensity ?? '',
-                ':sundayintensity' => $data->sundayintensity ?? '',
+                ':mondayintensity' => $normalizeIntensity($data->mondayintensity ?? ''),
+                ':tuesdayintensity' => $normalizeIntensity($data->tuesdayintensity ?? ''),
+                ':wednesdayintensity' => $normalizeIntensity($data->wednesdayintensity ?? ''),
+                ':thursdayintensity' => $normalizeIntensity($data->thursdayintensity ?? ''),
+                ':fridayintensity' => $normalizeIntensity($data->fridayintensity ?? ''),
+                ':saturdayintensity' => $normalizeIntensity($data->saturdayintensity ?? ''),
+                ':sundayintensity' => $normalizeIntensity($data->sundayintensity ?? ''),
                 ':class_id' => $data->class_id
             ]);
             return [
