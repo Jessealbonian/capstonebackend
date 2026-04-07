@@ -1547,9 +1547,10 @@ public function getPersonalCustomerCare($id)
 
     public function getRoutineHistory($studentUsername) {
         try {
-            $sql = "SELECT rh.id, rh.class_id, rh.user_id, rh.routine, rh.routine_intensity, rh.time_of_submission, rh.date_of_submission, rh.img
+            $sql = "SELECT rh.id, rh.class_id, rh.user_id, cr.class_name, rh.routine, rh.routine_intensity, rh.time_of_submission, rh.date_of_submission, rh.img, rh.student_reflection, rh.coach_response
                     FROM routine_history rh
                     INNER JOIN hoa_users u ON rh.user_id = u.user_id
+                    LEFT JOIN class_routines cr ON rh.class_id = cr.class_id
                     WHERE u.username = :student_username
                     ORDER BY rh.date_of_submission DESC, rh.time_of_submission DESC";
             
@@ -1561,6 +1562,30 @@ public function getPersonalCustomerCare($id)
             return $this->sendPayload($history, "success", "Successfully retrieved routine history.", 200);
         } catch (PDOException $e) {
             return $this->sendPayload(null, "failed", "Failed to retrieve routine history: " . $e->getMessage(), 500);
+        }
+    }
+
+    public function getRoutineHistoryForStudentInClass($classId, $userId) {
+        try {
+            if (!$classId || !$userId) {
+                return $this->sendPayload([], "failed", "class_id and user_id are required", 400);
+            }
+
+            $sql = "SELECT rh.id, rh.class_id, rh.user_id, cr.class_name, rh.routine, rh.routine_intensity, rh.time_of_submission, rh.date_of_submission, rh.img, rh.student_reflection, rh.coach_response
+                    FROM routine_history rh
+                    LEFT JOIN class_routines cr ON rh.class_id = cr.class_id
+                    WHERE rh.class_id = :class_id AND rh.user_id = :user_id
+                    ORDER BY rh.date_of_submission DESC, rh.time_of_submission DESC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+            $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return $this->sendPayload($history, "success", "Successfully retrieved routine history for class and student.", 200);
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, "failed", "Failed to retrieve routine history for class and student: " . $e->getMessage(), 500);
         }
     }
 

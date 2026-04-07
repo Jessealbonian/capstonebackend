@@ -2374,12 +2374,13 @@ class Post extends GlobalMethods
             $philippineDate = $philippineTime->format('Y-m-d');
             $philippineTimeStr = $philippineTime->format('Y-m-d H:i:s');
             
-            $insertSql = "INSERT INTO routine_history (class_id, user_id, routine, routine_intensity, time_of_submission, date_of_submission, img) 
-                          VALUES (:class_id, :user_id, :routine, :intensity, :philippine_time, :philippine_date, :image_path)";
+            $insertSql = "INSERT INTO routine_history (class_id, user_id, routine, routine_intensity, time_of_submission, date_of_submission, img, student_reflection) 
+                          VALUES (:class_id, :user_id, :routine, :intensity, :philippine_time, :philippine_date, :image_path, :student_reflection)";
             
             // Extract routine and intensity with fallbacks for field name compatibility
             $routine = $postData['routine'] ?? $postData['routine_name'] ?? 'Weekly Routine';
             $intensity = $postData['intensity'] ?? $postData['routine_intensity'] ?? 'Low';
+            $studentReflection = $postData['student_reflection'] ?? null;
             
             error_log("Extracted routine: " . $routine . ", intensity: " . $intensity);
             error_log("All available POST data keys: " . implode(', ', array_keys($postData)));
@@ -2393,7 +2394,8 @@ class Post extends GlobalMethods
                 ':intensity' => $intensity,
                 ':philippine_time' => $philippineTimeStr,
                 ':philippine_date' => $philippineDate,
-                ':image_path' => $cloudinaryUrl
+                ':image_path' => $cloudinaryUrl,
+                ':student_reflection' => $studentReflection
             ]);
 
             if (!$result) {

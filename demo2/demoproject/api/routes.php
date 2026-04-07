@@ -347,6 +347,16 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 }
                 break;
 
+            case 'getRoutineHistoryForStudentInClass':
+                $classId = isset($_GET['class_id']) ? intval($_GET['class_id']) : null;
+                $userId = isset($_GET['user_id']) ? intval($_GET['user_id']) : null;
+                if ($classId && $userId) {
+                    echo json_encode($get->getRoutineHistoryForStudentInClass($classId, $userId));
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'class_id and user_id are required']);
+                }
+                break;
+
             case 'check-today':
                 if (count($request) > 2) {
                     $routineId = intval($request[1]);
