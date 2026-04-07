@@ -2445,8 +2445,8 @@ class Post extends GlobalMethods
             $fileName = 'routine_' . time() . '_' . uniqid();
             error_log("Generated filename: " . $fileName);
             
-            // Cloudinary upload URL for signed uploads
-            $uploadUrl = 'https://api.cloudinary.com/v1_1/' . $config['cloud_name'] . '/image/upload';
+            // Cloudinary upload URL for signed uploads (auto supports image/pdf and other allowed files)
+            $uploadUrl = 'https://api.cloudinary.com/v1_1/' . $config['cloud_name'] . '/auto/upload';
             error_log("Upload URL: " . $uploadUrl);
             
             // Generate signature for signed upload
