@@ -679,6 +679,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($post->submitRoutineCompletion($_POST, $_FILES));
                 break;
 
+            case 'setCoachResponse':
+                echo json_encode($post->setCoachResponse($data));
+                break;
+
             case 'testCloudinaryConnection':
                 echo json_encode($post->testCloudinaryConnectionEndpoint());
                 break;

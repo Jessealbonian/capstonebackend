@@ -1947,6 +1947,36 @@ class Post extends GlobalMethods
         }
     }
 
+    public function setCoachResponse($data) {
+        try {
+            if (!isset($data->history_id) || !isset($data->coach_response)) {
+                return [
+                    "status" => "error",
+                    "message" => "history_id and coach_response are required"
+                ];
+            }
+
+            $historyId = (int)$data->history_id;
+            $coachResponse = trim((string)$data->coach_response);
+
+            $sql = "UPDATE routine_history SET coach_response = :coach_response WHERE id = :id";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':coach_response', $coachResponse, PDO::PARAM_STR);
+            $stmt->bindParam(':id', $historyId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return [
+                "status" => "success",
+                "message" => "Coach response saved"
+            ];
+        } catch (PDOException $e) {
+            return [
+                "status" => "error",
+                "message" => "Failed to save coach response: " . $e->getMessage()
+            ];
+        }
+    }
+
     public function generateTokens($data) {
         try {
             if (!isset($data->count) || !isset($data->class_id) || !isset($data->admin_id)) {

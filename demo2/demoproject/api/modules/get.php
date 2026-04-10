@@ -1281,9 +1281,11 @@ public function getPersonalCustomerCare($id)
             $date = sprintf('%04d-%02d-%02d', (int)$year, (int)$month, (int)$day);
 
             // Read attendance from routine_history for the given class and date
-            $sql = "SELECT rh.user_id, u.username AS name, rh.img AS img, rh.routine, rh.routine_intensity, rh.time_of_submission
+            $sql = "SELECT rh.user_id, u.username AS name, rh.img AS img, rh.routine, rh.routine_intensity, rh.time_of_submission,
+                           COALESCE(cg.student_status, 'active') AS status
                     FROM routine_history rh
                     INNER JOIN hoa_users u ON u.user_id = rh.user_id
+                    LEFT JOIN codegen cg ON cg.class_id = rh.class_id AND cg.user_id = rh.user_id
                     WHERE rh.class_id = :class_id AND rh.date_of_submission = :attend_date";
             $stmt = $this->pdo->prepare($sql);
             $stmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
