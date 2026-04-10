@@ -1299,6 +1299,53 @@ public function getPersonalCustomerCare($id)
         }
     }
 
+    // New: return full roster for a class on a specific date (includes inactive = no submission)
+    public function getClassRosterByDate($classId, $year, $month, $day) {
+        try {
+            if (!$classId || !$year || !$month || !$day) {
+                return $this->sendPayload(null, "failed", "Missing required parameters.", 400);
+            }
+
+            $date = sprintf('%04d-%02d-%02d', (int)$year, (int)$month, (int)$day);
+
+            $sql = "SELECT cg.user_id,
+                           hu.username AS name,
+                           cg.student_status,
+                           rh.id AS history_id,
+                           rh.img AS img,
+                           rh.routine,
+                           rh.routine_intensity,
+                           rh.time_of_submission
+                    FROM codegen cg
+                    INNER JOIN hoa_users hu ON hu.user_id = cg.user_id
+                    LEFT JOIN routine_history rh
+                      ON rh.class_id = cg.class_id
+                     AND rh.user_id = cg.user_id
+                     AND rh.date_of_submission = :attend_date
+                    WHERE cg.class_id = :class_id
+                      AND cg.class_id IS NOT NULL
+                      AND cg.student_status = 'active'
+                    ORDER BY hu.username ASC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $stmt->bindParam(':attend_date', $date, PDO::PARAM_STR);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Normalize to include "status" as completed vs not
+            $payload = array_map(function ($r) {
+                $completed = !empty($r['history_id']);
+                $r['status'] = $completed ? 'active' : 'inactive';
+                return $r;
+            }, $rows ?: []);
+
+            return $this->sendPayload($payload, "success", "Successfully retrieved class roster for date.", 200);
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, "failed", "Failed to fetch class roster for date: " . $e->getMessage(), 500);
+        }
+    }
+
     // Routines methods
     public function getEnrolledClasses($studentUsername) {
         try {

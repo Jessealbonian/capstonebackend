@@ -256,6 +256,14 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 echo json_encode($get->getClassAttendance($classId, $year, $month, $day));
                 break;
 
+            case 'getClassRosterByDate':
+                $classId = isset($_GET['class_id']) ? intval($_GET['class_id']) : null;
+                $year = isset($_GET['year']) ? intval($_GET['year']) : null;
+                $month = isset($_GET['month']) ? intval($_GET['month']) : null;
+                $day = isset($_GET['day']) ? intval($_GET['day']) : null;
+                echo json_encode($get->getClassRosterByDate($classId, $year, $month, $day));
+                break;
+
             case 'getTotalStudents':
                 $adminId = isset($_GET['admin_id']) ? intval($_GET['admin_id']) : null;
                 echo json_encode($get->getTotalStudents($adminId));

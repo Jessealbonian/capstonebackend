@@ -2377,35 +2377,52 @@ class Post extends GlobalMethods
                 ];
             }
 
-            // Check if routine already completed today
-            $today = date('Y-m-d');
+            // Determine target submission date (allow backdating, but no future dates)
+            $targetDate = $postData['date_of_submission'] ?? null;
+            if ($targetDate) {
+                $targetDate = trim((string)$targetDate);
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $targetDate)) {
+                    $targetDate = null;
+                } else {
+                    $todayDate = (new DateTime('now', new DateTimeZone('UTC')))->modify('+8 hours')->format('Y-m-d');
+                    if ($targetDate > $todayDate) {
+                        $targetDate = null;
+                    }
+                }
+            }
+
+            // Default to today's PH date if none provided
+            if (!$targetDate) {
+                $targetDate = (new DateTime('now', new DateTimeZone('UTC')))->modify('+8 hours')->format('Y-m-d');
+            }
+
+            // Check if routine already completed for that target date
             $checkSql = "SELECT id FROM routine_history 
                         WHERE class_id = :class_id 
                         AND user_id = :user_id 
-                        AND DATE(date_of_submission) = :today";
+                        AND DATE(date_of_submission) = :target_date";
             
             $checkStmt = $this->pdo->prepare($checkSql);
             $checkStmt->execute([
                 ':class_id' => $routineId,
                 ':user_id' => $userId,
-                ':today' => $today
+                ':target_date' => $targetDate
             ]);
 
             if ($checkStmt->fetch()) {
                 return [
                     "status" => "error",
-                    "message" => "Routine already completed today"
+                    "message" => "Routine already completed for this date"
                 ];
             }
 
             // Use Philippine timezone (UTC+8) for submission time and date
             $philippineTime = new DateTime('now', new DateTimeZone('UTC'));
             $philippineTime->modify('+8 hours');
-            $philippineDate = $philippineTime->format('Y-m-d');
             $philippineTimeStr = $philippineTime->format('Y-m-d H:i:s');
             
             $insertSql = "INSERT INTO routine_history (class_id, user_id, routine, routine_intensity, time_of_submission, date_of_submission, img, student_reflection) 
-                          VALUES (:class_id, :user_id, :routine, :intensity, :philippine_time, :philippine_date, :image_path, :student_reflection)";
+                          VALUES (:class_id, :user_id, :routine, :intensity, :philippine_time, :target_date, :image_path, :student_reflection)";
             
             // Extract routine and intensity with fallbacks for field name compatibility
             $routine = $postData['routine'] ?? $postData['routine_name'] ?? 'Weekly Routine';
@@ -2423,7 +2440,7 @@ class Post extends GlobalMethods
                 ':routine' => $routine,
                 ':intensity' => $intensity,
                 ':philippine_time' => $philippineTimeStr,
-                ':philippine_date' => $philippineDate,
+                ':target_date' => $targetDate,
                 ':image_path' => $cloudinaryUrl,
                 ':student_reflection' => $studentReflection
             ]);
