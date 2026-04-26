@@ -1857,7 +1857,9 @@ class Post extends GlobalMethods
                 thursdayintensity = :thursdayintensity,
                 fridayintensity = :fridayintensity,
                 saturdayintensity = :saturdayintensity,
-                sundayintensity = :sundayintensity
+                sundayintensity = :sundayintensity,
+                expiration_date = COALESCE(:expiration_date, expiration_date),
+                archived = COALESCE(:archived, archived)
             WHERE class_id = :class_id";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([
@@ -1875,6 +1877,8 @@ class Post extends GlobalMethods
                 ':fridayintensity' => $normalizeIntensity($data->fridayintensity ?? ''),
                 ':saturdayintensity' => $normalizeIntensity($data->saturdayintensity ?? ''),
                 ':sundayintensity' => $normalizeIntensity($data->sundayintensity ?? ''),
+                ':expiration_date' => ($data->expiration_date ?? null),
+                ':archived' => (isset($data->archived) ? intval($data->archived) : null),
                 ':class_id' => $data->class_id
             ]);
             return [
