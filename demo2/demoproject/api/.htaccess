@@ -17,3 +17,10 @@ RewriteRule ^api/(.*)$ api.php [QSA,L]
 
 # Route direct endpoint calls to routes.php
 RewriteRule ^([^/]+)$ routes.php?request=$1 [QSA,L]
+
+# Fallback upload limits when PHP module honors php_value overrides
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 12M
+    php_value max_file_uploads 20
+</IfModule>

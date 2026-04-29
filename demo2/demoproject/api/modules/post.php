@@ -2349,11 +2349,45 @@ class Post extends GlobalMethods
                 ];
             }
 
-            // Handle file upload
-            if (!isset($files['image']) || $files['image']['error'] !== UPLOAD_ERR_OK) {
+            // Handle file upload with explicit PHP upload error details
+            if (!isset($files['image'])) {
                 return [
                     "status" => "error",
-                    "message" => "Image upload failed"
+                    "message" => "Image upload failed: missing image file."
+                ];
+            }
+
+            $uploadError = (int)($files['image']['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($uploadError !== UPLOAD_ERR_OK) {
+                $uploadErrorMessage = "Image upload failed.";
+                switch ($uploadError) {
+                    case UPLOAD_ERR_INI_SIZE:
+                        $uploadErrorMessage = "Image upload failed: file exceeds server upload_max_filesize.";
+                        break;
+                    case UPLOAD_ERR_FORM_SIZE:
+                        $uploadErrorMessage = "Image upload failed: file exceeds form MAX_FILE_SIZE.";
+                        break;
+                    case UPLOAD_ERR_PARTIAL:
+                        $uploadErrorMessage = "Image upload failed: file was only partially uploaded.";
+                        break;
+                    case UPLOAD_ERR_NO_FILE:
+                        $uploadErrorMessage = "Image upload failed: no file was uploaded.";
+                        break;
+                    case UPLOAD_ERR_NO_TMP_DIR:
+                        $uploadErrorMessage = "Image upload failed: missing temporary upload directory.";
+                        break;
+                    case UPLOAD_ERR_CANT_WRITE:
+                        $uploadErrorMessage = "Image upload failed: failed to write file to disk.";
+                        break;
+                    case UPLOAD_ERR_EXTENSION:
+                        $uploadErrorMessage = "Image upload failed: a PHP extension stopped the upload.";
+                        break;
+                }
+
+                error_log("submitRoutineCompletion upload error code: " . $uploadError);
+                return [
+                    "status" => "error",
+                    "message" => $uploadErrorMessage
                 ];
             }
 
