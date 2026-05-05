@@ -1222,8 +1222,8 @@ public function getPersonalCustomerCare($id)
             $weekStartStr = $weekStart->format('Y-m-d');
             $weekEndStr = $today->format('Y-m-d');
 
-            // Includes student_status, code_id, weekly completion, last active date in week, latest kick reason
-            $sql = "SELECT cg.code_id, cg.user_id, cg.code, hu.username as name, hu.email as student_email, cg.student_status,
+            // Now includes student_status and code_id for deactivation
+            $sql = "SELECT cg.code_id, cg.user_id, cg.code, hu.username as name, cg.student_status,
                             CASE
                               WHEN EXISTS (
                                 SELECT 1
@@ -1233,17 +1233,7 @@ public function getPersonalCustomerCare($id)
                                   AND DATE(rh.date_of_submission) BETWEEN :week_start AND :week_end
                               )
                               THEN 1 ELSE 0
-                            END as completed_this_week,
-                            (SELECT MAX(DATE(rh2.date_of_submission))
-                               FROM routine_history rh2
-                              WHERE rh2.class_id = cg.class_id
-                                AND rh2.user_id = cg.user_id
-                                AND DATE(rh2.date_of_submission) BETWEEN :week_start AND :week_end
-                            ) AS last_active_date_in_week,
-                            (SELECT kh.reason FROM kickhistory kh
-                              WHERE kh.user_id = cg.user_id AND kh.class_id = cg.class_id
-                              ORDER BY kh.idkickhistory DESC LIMIT 1
-                            ) AS deactivation_reason
+                            END as completed_this_week
                     FROM codegen cg
                     INNER JOIN hoa_users hu ON cg.user_id = hu.user_id
                     WHERE cg.class_id = :class_id 
@@ -1291,8 +1281,7 @@ public function getPersonalCustomerCare($id)
             $date = sprintf('%04d-%02d-%02d', (int)$year, (int)$month, (int)$day);
 
             // Read attendance from routine_history for the given class and date
-            $sql = "SELECT rh.user_id, u.username AS name, u.email AS student_email, rh.img AS img, rh.routine, rh.routine_intensity, rh.time_of_submission,
-                           rh.student_reflection, rh.coach_response,
+            $sql = "SELECT rh.user_id, u.username AS name, rh.img AS img, rh.routine, rh.routine_intensity, rh.time_of_submission,
                            COALESCE(cg.student_status, 'active') AS status
                     FROM routine_history rh
                     INNER JOIN hoa_users u ON u.user_id = rh.user_id
