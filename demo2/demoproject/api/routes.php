@@ -365,6 +365,30 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 }
                 break;
 
+            case 'getClassListReportData':
+                $classId = isset($_GET['class_id']) ? intval($_GET['class_id']) : null;
+                $adminId = isset($_GET['admin_id']) ? intval($_GET['admin_id']) : null;
+                $periodStart = isset($_GET['period_start']) ? $_GET['period_start'] : null;
+                $periodEnd = isset($_GET['period_end']) ? $_GET['period_end'] : null;
+                if ($classId && $periodStart && $periodEnd) {
+                    echo json_encode($get->getClassListReportData($classId, $adminId, $periodStart, $periodEnd));
+                } else {
+                    echo json_encode(['status' => ['remarks' => 'failed', 'message' => 'class_id, period_start, period_end required'], 'payload' => null]);
+                }
+                break;
+
+            case 'getRoutineHistoryReportData':
+                $classId = isset($_GET['class_id']) ? intval($_GET['class_id']) : null;
+                $adminId = isset($_GET['admin_id']) ? intval($_GET['admin_id']) : null;
+                $periodStart = isset($_GET['period_start']) ? $_GET['period_start'] : null;
+                $periodEnd = isset($_GET['period_end']) ? $_GET['period_end'] : null;
+                if ($classId && $periodStart && $periodEnd) {
+                    echo json_encode($get->getRoutineHistoryReportData($classId, $adminId, $periodStart, $periodEnd));
+                } else {
+                    echo json_encode(['status' => ['remarks' => 'failed', 'message' => 'class_id, period_start, period_end required'], 'payload' => null]);
+                }
+                break;
+
             case 'check-today':
                 if (count($request) > 2) {
                     $routineId = intval($request[1]);

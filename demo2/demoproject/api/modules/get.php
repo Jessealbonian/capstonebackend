@@ -1912,6 +1912,187 @@ public function getPersonalCustomerCare($id)
         }
     }
 
+    /**
+     * Coach Class List report: roster + submission aggregates for a date range.
+     * Classification for PDF/UI is done client-side using submissions_all_time, submissions_in_period, student_status.
+     */
+    public function getClassListReportData($classId, $adminId, $periodStart, $periodEnd, $opts = []) {
+        try {
+            if (!$classId || !is_numeric($classId)) {
+                return $this->sendPayload(null, "failed", "Invalid class ID", 400);
+            }
+            $ps = $this->normalizeReportDate($periodStart);
+            $pe = $this->normalizeReportDate($periodEnd);
+            if (!$ps || !$pe || $ps > $pe) {
+                return $this->sendPayload(null, "failed", "Invalid period_start / period_end (use Y-m-d)", 400);
+            }
+
+            $showDeactivated = array_key_exists('show_deactivated', $opts)
+                ? (bool)$opts['show_deactivated']
+                : (isset($_GET['show_deactivated']) && $_GET['show_deactivated'] == '1');
+
+            $classStmt = $this->pdo->prepare(
+                "SELECT cr.class_id, cr.class_name, cr.description, cr.admin_id, ha.username AS coach_username
+                 FROM class_routines cr
+                 LEFT JOIN hoa_admins ha ON ha.admin_id = cr.admin_id
+                 WHERE cr.class_id = :class_id LIMIT 1"
+            );
+            $classStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $classStmt->execute();
+            $classRow = $classStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$classRow) {
+                return $this->sendPayload(null, "failed", "Class not found", 404);
+            }
+
+            if ($adminId && (int)$classRow['admin_id'] !== (int)$adminId) {
+                return $this->sendPayload(null, "failed", "Unauthorized for this class", 403);
+            }
+
+            $kickJoinSql = "LEFT JOIN (
+                SELECT kh1.class_id, kh1.user_id, kh1.reason, kh1.kicked_at
+                FROM kickhistory kh1
+                INNER JOIN (
+                    SELECT class_id, user_id, MAX(kicked_at) AS mx
+                    FROM kickhistory
+                    GROUP BY class_id, user_id
+                ) t ON t.class_id = kh1.class_id AND t.user_id = kh1.user_id AND t.mx = kh1.kicked_at
+            ) kh ON kh.class_id = cg.class_id AND kh.user_id = cg.user_id AND cg.student_status = 'deactivated'";
+
+            $sql = "SELECT cg.code_id, cg.user_id, cg.code, hu.username AS name, cg.student_status,
+                           (SELECT COUNT(*) FROM routine_history rh
+                             WHERE rh.class_id = cg.class_id AND rh.user_id = cg.user_id) AS submissions_all_time,
+                           (SELECT COUNT(*) FROM routine_history rh
+                             WHERE rh.class_id = cg.class_id AND rh.user_id = cg.user_id
+                               AND rh.date_of_submission BETWEEN :ps AND :pe) AS submissions_in_period,
+                           (SELECT rh.date_of_submission FROM routine_history rh
+                             WHERE rh.class_id = cg.class_id AND rh.user_id = cg.user_id
+                             ORDER BY rh.date_of_submission DESC, rh.time_of_submission DESC LIMIT 1) AS last_submission_date,
+                           (SELECT rh.routine FROM routine_history rh
+                             WHERE rh.class_id = cg.class_id AND rh.user_id = cg.user_id
+                             ORDER BY rh.date_of_submission DESC, rh.time_of_submission DESC LIMIT 1) AS last_routine_name,
+                           (SELECT COUNT(*) FROM routine_history rh
+                             WHERE rh.class_id = cg.class_id AND rh.user_id = cg.user_id
+                               AND (kh.kicked_at IS NULL OR rh.date_of_submission <= DATE(kh.kicked_at))) AS submissions_before_deactivation,
+                           (SELECT rh.date_of_submission FROM routine_history rh
+                             WHERE rh.class_id = cg.class_id AND rh.user_id = cg.user_id
+                               AND (kh.kicked_at IS NULL OR rh.date_of_submission <= DATE(kh.kicked_at))
+                             ORDER BY rh.date_of_submission DESC, rh.time_of_submission DESC LIMIT 1) AS last_submission_before_deactivation,
+                           (SELECT rh.routine FROM routine_history rh
+                             WHERE rh.class_id = cg.class_id AND rh.user_id = cg.user_id
+                               AND (kh.kicked_at IS NULL OR rh.date_of_submission <= DATE(kh.kicked_at))
+                             ORDER BY rh.date_of_submission DESC, rh.time_of_submission DESC LIMIT 1) AS last_routine_before_deactivation,
+                           kh.reason AS deactivation_reason,
+                           kh.kicked_at AS deactivated_at
+                    FROM codegen cg
+                    INNER JOIN hoa_users hu ON hu.user_id = cg.user_id
+                    $kickJoinSql
+                    WHERE cg.class_id = :class_id AND cg.class_id IS NOT NULL";
+
+            if (!$showDeactivated) {
+                $sql .= " AND cg.student_status = 'active'";
+            }
+            if ($adminId) {
+                $sql .= " AND cg.Requestedbycoach = :admin_id";
+            }
+            $sql .= " ORDER BY hu.username ASC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $stmt->bindParam(':ps', $ps, PDO::PARAM_STR);
+            $stmt->bindParam(':pe', $pe, PDO::PARAM_STR);
+            if ($adminId) {
+                $stmt->bindParam(':admin_id', $adminId, PDO::PARAM_INT);
+            }
+            $stmt->execute();
+            $students = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            $dailySql = "SELECT DATE(rh.date_of_submission) AS d, COUNT(*) AS c
+                         FROM routine_history rh
+                         WHERE rh.class_id = :class_id
+                           AND rh.date_of_submission BETWEEN :ps2 AND :pe2
+                         GROUP BY DATE(rh.date_of_submission)
+                         ORDER BY d ASC";
+            $dailyStmt = $this->pdo->prepare($dailySql);
+            $dailyStmt->bindParam(':class_id', $classId, PDO::PARAM_INT);
+            $dailyStmt->bindParam(':ps2', $ps, PDO::PARAM_STR);
+            $dailyStmt->bindParam(':pe2', $pe, PDO::PARAM_STR);
+            $dailyStmt->execute();
+            $dailyRows = $dailyStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $daily_activity = array_map(function ($r) {
+                return ['date' => $r['d'], 'count' => (int)$r['c']];
+            }, $dailyRows);
+
+            $daysInPeriod = max(1, (int)((strtotime($pe) - strtotime($ps)) / 86400) + 1);
+
+            $payload = [
+                'class_id' => (int)$classId,
+                'class_name' => $classRow['class_name'] ?? '',
+                'description' => $classRow['description'] ?? '',
+                'coach_name' => $classRow['coach_username'] ?? '',
+                'period_start' => $ps,
+                'period_end' => $pe,
+                'days_in_period' => $daysInPeriod,
+                'students' => $students,
+                'daily_submissions' => $daily_activity
+            ];
+
+            return $this->sendPayload($payload, "success", "Class list report data retrieved.", 200);
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, "failed", "Failed to build class list report: " . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Routine History report: roster metrics + all submissions in period (reflections, coach responses).
+     */
+    public function getRoutineHistoryReportData($classId, $adminId, $periodStart, $periodEnd) {
+        try {
+            $base = $this->getClassListReportData($classId, $adminId, $periodStart, $periodEnd, ['show_deactivated' => true]);
+            if (($base['status']['remarks'] ?? '') !== 'success' || empty($base['payload'])) {
+                return $base;
+            }
+            $payload = $base['payload'];
+            $ps = $payload['period_start'];
+            $pe = $payload['period_end'];
+            $classIdInt = (int)$payload['class_id'];
+
+            $sql = "SELECT rh.id, rh.class_id, rh.user_id, hu.username AS student_name, cg.code AS student_code,
+                           COALESCE(cg.student_status, 'active') AS student_status,
+                           rh.routine, rh.routine_intensity, rh.time_of_submission, rh.date_of_submission,
+                           rh.img, rh.student_reflection, rh.coach_response
+                    FROM routine_history rh
+                    INNER JOIN hoa_users hu ON hu.user_id = rh.user_id
+                    LEFT JOIN codegen cg ON cg.class_id = rh.class_id AND cg.user_id = rh.user_id
+                    WHERE rh.class_id = :class_id
+                      AND rh.date_of_submission BETWEEN :ps AND :pe
+                    ORDER BY hu.username ASC, rh.date_of_submission DESC, rh.time_of_submission DESC";
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindParam(':class_id', $classIdInt, PDO::PARAM_INT);
+            $stmt->bindParam(':ps', $ps, PDO::PARAM_STR);
+            $stmt->bindParam(':pe', $pe, PDO::PARAM_STR);
+            $stmt->execute();
+            $payload['submissions'] = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $payload['total_submissions_in_period'] = count($payload['submissions']);
+
+            return $this->sendPayload($payload, "success", "Routine history report data retrieved.", 200);
+        } catch (PDOException $e) {
+            return $this->sendPayload(null, "failed", "Failed to build routine history report: " . $e->getMessage(), 500);
+        }
+    }
+
+    private function normalizeReportDate($d) {
+        if (!$d || !is_string($d)) {
+            return null;
+        }
+        $d = trim($d);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
+            return $d;
+        }
+        $ts = strtotime($d);
+        return $ts ? date('Y-m-d', $ts) : null;
+    }
+
     function getLandingVisits($pdo, $update = false, $ipAddress = null) {
         try {
             // Ensure the row exists first
