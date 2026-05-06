@@ -1948,15 +1948,35 @@ public function getPersonalCustomerCare($id)
                 return $this->sendPayload(null, "failed", "Unauthorized for this class", 403);
             }
 
-            $kickJoinSql = "LEFT JOIN (
-                SELECT kh1.class_id, kh1.user_id, kh1.reason, kh1.kicked_at
-                FROM kickhistory kh1
-                INNER JOIN (
-                    SELECT class_id, user_id, MAX(kicked_at) AS mx
-                    FROM kickhistory
-                    GROUP BY class_id, user_id
-                ) t ON t.class_id = kh1.class_id AND t.user_id = kh1.user_id AND t.mx = kh1.kicked_at
-            ) kh ON kh.class_id = cg.class_id AND kh.user_id = cg.user_id AND cg.student_status = 'deactivated'";
+            // Production DBs often have kickhistory without kicked_at — use latest row by idkickhistory.
+            // When kicked_at exists (compiled_schema_upgrade.sql), use it for cutoff dates + deactivated_at.
+            $kickHasAt = $this->kickhistoryHasKickedAtColumn();
+            if ($kickHasAt) {
+                $kickJoinSql = "LEFT JOIN (
+                    SELECT kh1.class_id, kh1.user_id, kh1.reason, kh1.kicked_at
+                    FROM kickhistory kh1
+                    INNER JOIN (
+                        SELECT class_id, user_id, MAX(kicked_at) AS mx
+                        FROM kickhistory
+                        GROUP BY class_id, user_id
+                    ) t ON t.class_id = kh1.class_id AND t.user_id = kh1.user_id AND t.mx = kh1.kicked_at
+                ) kh ON kh.class_id = cg.class_id AND kh.user_id = cg.user_id AND cg.student_status = 'deactivated'";
+                $beforeDeactRhCond = '(kh.kicked_at IS NULL OR rh.date_of_submission <= DATE(kh.kicked_at))';
+                $deactivatedAtExpr = 'kh.kicked_at AS deactivated_at';
+            } else {
+                $kickJoinSql = "LEFT JOIN (
+                    SELECT kh1.class_id, kh1.user_id, kh1.reason
+                    FROM kickhistory kh1
+                    INNER JOIN (
+                        SELECT class_id, user_id, MAX(idkickhistory) AS mid
+                        FROM kickhistory
+                        GROUP BY class_id, user_id
+                    ) t ON t.class_id = kh1.class_id AND t.user_id = kh1.user_id AND t.mid = kh1.idkickhistory
+                ) kh ON kh.class_id = cg.class_id AND kh.user_id = cg.user_id AND cg.student_status = 'deactivated'";
+                // No kick timestamp: treat all routine_history as pre-deactivation metrics.
+                $beforeDeactRhCond = '1=1';
+                $deactivatedAtExpr = 'NULL AS deactivated_at';
+            }
 
             $sql = "SELECT cg.code_id, cg.user_id, cg.code, hu.username AS name, cg.student_status,
                            (SELECT COUNT(*) FROM routine_history rh
@@ -1972,17 +1992,17 @@ public function getPersonalCustomerCare($id)
                              ORDER BY rh.date_of_submission DESC, rh.time_of_submission DESC LIMIT 1) AS last_routine_name,
                            (SELECT COUNT(*) FROM routine_history rh
                              WHERE rh.class_id = cg.class_id AND rh.user_id = cg.user_id
-                               AND (kh.kicked_at IS NULL OR rh.date_of_submission <= DATE(kh.kicked_at))) AS submissions_before_deactivation,
+                               AND ($beforeDeactRhCond)) AS submissions_before_deactivation,
                            (SELECT rh.date_of_submission FROM routine_history rh
                              WHERE rh.class_id = cg.class_id AND rh.user_id = cg.user_id
-                               AND (kh.kicked_at IS NULL OR rh.date_of_submission <= DATE(kh.kicked_at))
+                               AND ($beforeDeactRhCond)
                              ORDER BY rh.date_of_submission DESC, rh.time_of_submission DESC LIMIT 1) AS last_submission_before_deactivation,
                            (SELECT rh.routine FROM routine_history rh
                              WHERE rh.class_id = cg.class_id AND rh.user_id = cg.user_id
-                               AND (kh.kicked_at IS NULL OR rh.date_of_submission <= DATE(kh.kicked_at))
+                               AND ($beforeDeactRhCond)
                              ORDER BY rh.date_of_submission DESC, rh.time_of_submission DESC LIMIT 1) AS last_routine_before_deactivation,
                            kh.reason AS deactivation_reason,
-                           kh.kicked_at AS deactivated_at
+                           $deactivatedAtExpr
                     FROM codegen cg
                     INNER JOIN hoa_users hu ON hu.user_id = cg.user_id
                     $kickJoinSql
@@ -2079,6 +2099,21 @@ public function getPersonalCustomerCare($id)
         } catch (PDOException $e) {
             return $this->sendPayload(null, "failed", "Failed to build routine history report: " . $e->getMessage(), 500);
         }
+    }
+
+    /** True if kickhistory has kicked_at (optional upgrade); false matches minimal 4-column table. */
+    private function kickhistoryHasKickedAtColumn(): bool {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+        try {
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM kickhistory LIKE 'kicked_at'");
+            $cached = $stmt && $stmt->rowCount() > 0;
+        } catch (\Throwable $e) {
+            $cached = false;
+        }
+        return $cached;
     }
 
     private function normalizeReportDate($d) {
